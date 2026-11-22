@@ -1,8 +1,23 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import AdminLayout from './layouts/AdminLayout'
+import Dashboard from './pages/admin/Dashboard'
+
 function App() {
   return (
-    <h1 className="text-4xl font-bold text-blue-600">
-      Course Feedback Survey Tool
-    </h1>
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/admin/dashboard"
+          element={
+            <AdminLayout>
+              <Dashboard />
+            </AdminLayout>
+          }
+        />
+
+        <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
