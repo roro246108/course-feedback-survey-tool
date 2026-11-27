@@ -1,0 +1,107 @@
+%% Base relationships are from the supplied Neon constraints export. The ownership
+%% table and participation.status are migration-001 objects retained as a database proposal; application code no longer depends on them. Live application status must be verified with the database owner.
+%% Column inventory has a users.updated_at discrepancy; see neon-schema-review.md.
+erDiagram
+    USERS ||--o{ COURSE_INSTRUCTORS : instructs
+    USERS ||--o{ ENROLLMENTS : enrolls
+    USERS ||--o{ SURVEYS : creates
+    USERS ||--o{ PARTICIPATION : participates
+    USERS ||--o{ FEEDBACK_IDEMPOTENCY : owns_key_scope
+    USERS ||--o{ ACCOUNT_INVITATIONS : invited_by
+    USERS ||--o{ AUTH_AUDIT_LOGS : audit_subject
+    USERS ||--o{ EMAIL_VERIFICATION_TOKENS : verifies
+    USERS ||--o{ PASSWORD_RESET_TOKENS : resets
+    USERS ||--o{ USER_SESSIONS : has_sessions
+    USER_SESSIONS |o--o{ USER_SESSIONS : replaced_by
+
+    COURSES ||--o{ COURSE_INSTRUCTORS : assigned
+    SEMESTERS ||--o{ COURSE_INSTRUCTORS : scheduled
+    COURSES ||--o{ ENROLLMENTS : has
+    SEMESTERS ||--o{ ENROLLMENTS : for_term
+    COURSE_INSTRUCTORS ||--o{ SURVEYS : has
+    SURVEYS ||--o{ QUESTIONS : contains
+    SURVEYS ||--o{ FEEDBACK_SUBMISSIONS : receives
+    FEEDBACK_SUBMISSIONS ||--o| FEEDBACK_OWNERSHIP_MAPPING : owner_key_maps
+    SURVEYS ||--o{ FEEDBACK_OWNERSHIP_MAPPING : scopes
+    SURVEYS ||--o{ PARTICIPATION : tracks
+    SURVEYS ||--o{ FEEDBACK_IDEMPOTENCY : scopes
+    FEEDBACK_SUBMISSIONS ||--o{ FEEDBACK_ANSWERS : contains
+    QUESTIONS ||--o{ FEEDBACK_ANSWERS : answered_by
+
+    USERS {
+        int user_id PK
+    }
+    COURSES {
+        int course_id PK
+    }
+    SEMESTERS {
+        int semester_id PK
+    }
+    COURSE_INSTRUCTORS {
+        int course_instructor_id PK
+        int course_id FK
+        int semester_id FK
+        int instructor_id FK
+    }
+    ENROLLMENTS {
+        int enrollment_id PK
+        int student_id FK
+        int course_id FK
+        int semester_id FK
+    }
+    SURVEYS {
+        int survey_id PK
+        int course_instructor_id FK
+        int created_by FK
+    }
+    QUESTIONS {
+        int question_id PK
+        int survey_id FK
+    }
+    FEEDBACK_SUBMISSIONS {
+        int submission_id PK
+        int survey_id FK
+    }
+    FEEDBACK_ANSWERS {
+        int answer_id PK
+        int submission_id FK
+        int question_id FK
+    }
+    PARTICIPATION {
+        int participation_id PK
+        int survey_id FK
+        int student_id FK
+        varchar status
+    }
+    FEEDBACK_IDEMPOTENCY {
+        bigint id PK
+        int survey_id FK
+        int student_id FK
+    }
+    FEEDBACK_OWNERSHIP_MAPPING {
+        varchar owner_key PK
+        int survey_id FK
+        int submission_id FK
+        timestamp created_at
+    }
+    ACCOUNT_INVITATIONS {
+        bigint invitation_id PK
+        int invited_by FK
+    }
+    AUTH_AUDIT_LOGS {
+        bigint log_id PK
+        int user_id FK
+    }
+    EMAIL_VERIFICATION_TOKENS {
+        bigint verification_id PK
+        int user_id FK
+    }
+    PASSWORD_RESET_TOKENS {
+        bigint reset_id PK
+        int user_id FK
+    }
+    USER_SESSIONS {
+        uuid session_id PK
+        int user_id FK
+        uuid replaced_by_session_id FK
+    }
