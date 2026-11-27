@@ -2,7 +2,7 @@
 const express = require("express");
 const router = express.Router();
 
-const rateLimitMiddleware = require("../../middleware/rateLimitMiddleware");
+const rateLimitMiddleware = require("../../shared/middleware/rateLimitMiddleware");
 const feedbackController = require("../controllers/feedbackController");
 
 const requireStudent = require("../handlers/requireStudent");

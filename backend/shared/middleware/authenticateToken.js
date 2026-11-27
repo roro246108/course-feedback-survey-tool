@@ -1,8 +1,8 @@
 
-const { verifyAccessToken } = require("../authentication/services/tokenService");
+const { verifyAccessToken } = require("../../authentication/services/tokenService");
 
-const sessionModel = require("../authentication/models/sessionModel");
-const authModel = require("../authentication/models/authModel");
+const sessionModel = require("../../authentication/models/sessionModel");
+const authModel = require("../../authentication/models/authModel");
 
 // Verify the access token and identify the authenticated user.
 async function authenticateToken(req, res, next) {
@@ -90,7 +90,9 @@ async function authenticateToken(req, res, next) {
     ) {
       return res.status(403).json({
         success: false,
-        message: "Your account is not active or verified.",
+        message: user?.account_status === "Inactive"
+          ? "Your account has been deactivated. Contact an administrator."
+          : "Your account is not active or verified.",
       });
     }
 

@@ -3,11 +3,14 @@ const crypto = require("crypto");
 const pool = require("../../database/db");
 
 const invitationModel = require("../models/invitationModel");
-const { sendEmail } = require("../../notifications/emailService");
+const {
+  sendEmail,
+  EmailDeliveryError,
+} = require("../../notifications/emailService");
 
 const INVITATION_EXPIRY_HOURS = 24;
 
-const ALLOWED_ROLES = ["Student", "Instructor", "Admin"];
+const ALLOWED_ROLES = ["Student", "Instructor"];
 
 function escapeHtml(value) {
   return String(value).replace(/[&<>"']/g, (character) => {
@@ -23,7 +26,12 @@ function escapeHtml(value) {
   });
 }
 
-function validateInvitationInput({ fullName, email, role }) {
+function validateInvitationInput({
+  fullName,
+  personalEmail,
+  academicEmail,
+  role,
+}) {
   if (
     typeof fullName !== "string" ||
     fullName.trim().length < 2 ||
@@ -33,35 +41,73 @@ function validateInvitationInput({ fullName, email, role }) {
   }
 
   if (
-    typeof email !== "string" ||
-    email.trim().length > 255 ||
-    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+    typeof personalEmail !== "string" ||
+    personalEmail.trim().length > 255 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(personalEmail.trim())
   ) {
-    throw new Error("Please provide a valid email address.");
+    throw new Error("Please provide a valid personal email address.");
   }
 
   if (!ALLOWED_ROLES.includes(role)) {
     throw new Error("Invalid account role.");
   }
+
+  if (
+    typeof academicEmail !== "string" ||
+    academicEmail.trim().length > 255 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(academicEmail.trim())
+  ) {
+    throw new Error("Please provide a valid academic email address.");
+  }
 }
 
 async function createInvitation({
   fullName,
-  email,
+  personalEmail,
+  academicEmail,
   role,
   invitedBy,
   ipAddress,
   userAgent,
 }) {
-  validateInvitationInput({ fullName, email, role });
+  validateInvitationInput({
+    fullName,
+    personalEmail,
+    academicEmail,
+    role,
+  });
 
   if (!Number.isInteger(Number(invitedBy)) || Number(invitedBy) <= 0) {
     throw new Error("Invalid administrator.");
   }
 
   const normalizedName = fullName.trim();
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedPersonalEmail = personalEmail.trim().toLowerCase();
+  const normalizedAcademicEmail = academicEmail.trim().toLowerCase();
   const administratorId = Number(invitedBy);
+  let invitationUrl;
+
+  try {
+    if (!process.env.FRONTEND_URL) {
+      throw new Error("Missing frontend URL.");
+    }
+
+    invitationUrl = new URL("/accept-invitation", process.env.FRONTEND_URL);
+    if (!["http:", "https:"].includes(invitationUrl.protocol)) {
+      throw new Error("Invalid frontend URL protocol.");
+    }
+  } catch {
+    const error = new Error(
+      "Invitation email configuration is incomplete: FRONTEND_URL must be a valid HTTP(S) URL."
+    );
+    error.code = "INVITATION_EMAIL_CONFIGURATION_ERROR";
+    error.statusCode = 503;
+    throw error;
+  }
+
+  const emailAddresses = [...new Set(
+    [normalizedPersonalEmail, normalizedAcademicEmail]
+  )].sort();
 
   const rawToken = crypto.randomBytes(32).toString("base64url");
 
@@ -101,41 +147,44 @@ async function createInvitation({
       );
     }
 
-    // Serialize invitation creation for the same normalized email.
-    await client.query(
-      `
-        SELECT pg_advisory_xact_lock(
-          hashtextextended($1, 0)
-        );
-      `,
-      [normalizedEmail]
-    );
+    // Lock every address in a stable order so cross-field duplicates cannot race.
+    for (const address of emailAddresses) {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, 0));`,
+        [address]
+      );
+    }
 
     // Prevent invitations for existing accounts.
     const existingUser = await client.query(
       `
         SELECT user_id
         FROM users
-        WHERE LOWER(TRIM(email)) = $1
+        WHERE LOWER(TRIM(email)) = ANY($1::text[])
+          OR (
+            role IN ('Student', 'Instructor')
+            AND LOWER(TRIM(personal_email)) = ANY($1::text[])
+          )
         LIMIT 1;
       `,
-      [normalizedEmail]
+      [emailAddresses]
     );
 
     if (existingUser.rowCount > 0) {
       throw new Error("An account already exists for this email address.");
     }
 
-    // Revoke older active invitations for this email.
-    await invitationModel.revokeActiveInvitationsByEmail(
-      normalizedEmail,
+    // Revoke older invitations that overlap a delivery or login address.
+    await invitationModel.revokeActiveInvitationsByEmails(
+      emailAddresses,
       client
     );
 
     // Create the new invitation.
     invitation = await invitationModel.createInvitation(
       {
-        email: normalizedEmail,
+        email: normalizedPersonalEmail,
+        academicEmail: normalizedAcademicEmail,
         fullName: normalizedName,
         role,
         tokenHash,
@@ -160,7 +209,7 @@ async function createInvitation({
       `,
       [
         administratorId,
-        normalizedEmail,
+        normalizedPersonalEmail,
         ipAddress || null,
         userAgent || null,
       ]
@@ -181,22 +230,15 @@ async function createInvitation({
 
   // Send the invitation email after the database transaction commits.
   try {
-    const frontendUrl = process.env.FRONTEND_URL;
-
-    if (!frontendUrl) {
-      throw new Error("FRONTEND_URL is missing.");
-    }
-
-    const invitationUrl = new URL("/accept-invitation", frontendUrl);
-
     invitationUrl.searchParams.set("token", rawToken);
 
     const safeName = escapeHtml(normalizedName);
     const safeRole = escapeHtml(role);
+    const safeAcademicEmail = escapeHtml(normalizedAcademicEmail);
     const safeUrl = escapeHtml(invitationUrl.toString());
 
     await sendEmail({
-      to: normalizedEmail,
+      to: normalizedPersonalEmail,
       subject: "You're invited to Course Feedback",
 
       html: `
@@ -211,6 +253,8 @@ async function createInvitation({
           </p>
 
           <p>Your assigned role is: <strong>${safeRole}</strong></p>
+
+          <p>Use this academic email to sign in: <strong>${safeAcademicEmail}</strong></p>
 
           <p>
             Click the link below to accept your invitation
@@ -248,6 +292,7 @@ async function createInvitation({
 Hello ${normalizedName},
 
 You have been invited to Course Feedback as ${role}.
+Sign in using your academic email: ${normalizedAcademicEmail}
 
 Accept your invitation here:
 ${invitationUrl.toString()}
@@ -257,15 +302,26 @@ This link expires in ${INVITATION_EXPIRY_HOURS} hours.
     });
   } catch (emailError) {
     // Revoke the invitation if the email could not be sent.
-    const cleanupClient = await pool.connect();
+    const providerFailure = emailError instanceof EmailDeliveryError;
+    const diagnostic = providerFailure
+      ? emailError.message
+      : "The email service failed before confirming delivery.";
+    let cleanupClient;
+    let cleanupTransactionStarted = false;
 
     try {
+      cleanupClient = await pool.connect();
       await cleanupClient.query("BEGIN");
+      cleanupTransactionStarted = true;
 
-      await invitationModel.revokeInvitation(
+      const invitationRevoked = await invitationModel.revokeInvitation(
         invitation.invitation_id,
         cleanupClient
       );
+
+      if (!invitationRevoked) {
+        throw new Error("Invitation revocation was not confirmed.");
+      }
 
       await cleanupClient.query(
         `
@@ -281,30 +337,64 @@ This link expires in ${INVITATION_EXPIRY_HOURS} hours.
         `,
         [
           administratorId,
-          normalizedEmail,
+          normalizedPersonalEmail,
           ipAddress || null,
           userAgent || null,
         ]
       );
 
       await cleanupClient.query("COMMIT");
+      cleanupTransactionStarted = false;
     } catch (cleanupError) {
-      try {
-        await cleanupClient.query("ROLLBACK");
-      } catch (rollbackError) {
-        console.error("Invitation cleanup rollback failed:", rollbackError);
+      if (cleanupClient && cleanupTransactionStarted) {
+        try {
+          await cleanupClient.query("ROLLBACK");
+        } catch {
+          console.error("Invitation cleanup rollback failed.");
+        }
       }
 
-      console.error("Failed to revoke invitation after email failure:", cleanupError);
+      console.error("Invitation cleanup failed after email delivery failure.", {
+        provider: providerFailure ? emailError.provider : "Email service",
+        providerCode: providerFailure ? emailError.providerCode : null,
+        providerStatusCode: providerFailure ? emailError.statusCode : null,
+        providerMessage: providerFailure
+          ? emailError.safeMessage
+          : "Email delivery was not confirmed.",
+        cleanupCode:
+          typeof cleanupError.code === "string" &&
+          /^[A-Za-z0-9_.-]{1,64}$/.test(cleanupError.code)
+            ? cleanupError.code
+            : "UNKNOWN",
+      });
 
-      throw new Error(
-        "The invitation email could not be sent, and the invitation cleanup requires attention."
+      const error = new Error(
+        `Invitation email delivery failed: ${diagnostic} The prior invitation could not be confirmed revoked. Retrying will invalidate any active invitation matching these addresses before creating another.`
       );
+      error.code = "INVITATION_EMAIL_CLEANUP_FAILED";
+      error.statusCode = 503;
+      throw error;
     } finally {
-      cleanupClient.release();
+      if (cleanupClient) {
+        cleanupClient.release();
+      }
     }
 
-    throw new Error("The invitation email could not be sent.");
+    console.error("Invitation email delivery failed.", {
+      provider: providerFailure ? emailError.provider : "Email service",
+      providerCode: providerFailure ? emailError.providerCode : null,
+      providerStatusCode: providerFailure ? emailError.statusCode : null,
+      message: providerFailure
+        ? emailError.safeMessage
+        : "Email delivery was not confirmed.",
+    });
+
+    const error = new Error(
+      `The invitation record was created but then revoked because email delivery failed. ${diagnostic}`
+    );
+    error.code = "EMAIL_DELIVERY_FAILED";
+    error.statusCode = 502;
+    throw error;
   }
 
   return {
@@ -313,6 +403,8 @@ This link expires in ${INVITATION_EXPIRY_HOURS} hours.
     invitation: {
       invitationId: invitation.invitation_id,
       email: invitation.email,
+      personalEmail: invitation.email,
+      academicEmail: invitation.academic_email,
       fullName: invitation.full_name,
       role: invitation.role,
       expiresAt: invitation.expires_at,

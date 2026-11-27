@@ -1,37 +1,44 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { BarChart3 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import AdminLayout from "../../layouts/AdminLayout";
+import Sidebar from "../Sidebar";
+
+const instructorNavigation = [
+  {
+    name: "Reports",
+    path: "/instructor/reports",
+    icon: BarChart3,
+    children: [
+      { name: "Analytics Overview", path: "/instructor/reports" },
+      { name: "Semester Comparison", path: "/instructor/reports/semesters" },
+      { name: "Export Reports", path: "/instructor/reports/export" },
+    ],
+  },
+];
 
 export default function RoleDashboardLayout({ children }) {
-  const { user, logout } = useAuth();
-  const navigate = useNavigate();
-  const [loggingOut, setLoggingOut] = useState(false);
+  const { user } = useAuth();
 
-  async function handleLogout() {
-    if (loggingOut) return;
-    setLoggingOut(true);
-    try { await logout(); } catch (error) { console.error("Logout request failed:", error); }
-    finally { navigate("/login", { replace: true }); }
+  if (user?.role === "Admin") {
+    return <AdminLayout>{children}</AdminLayout>;
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F7F6] text-[#2B5748]">
-      <header className="flex items-center justify-between border-b border-[#A6B398]/30 bg-white px-6 py-4 shadow-sm md:px-10">
-        <div>
-          <p className="font-serif text-2xl font-bold tracking-wide">OAK</p>
-          <p className="text-[10px] font-medium tracking-[3px] text-[#4B5545]">COURSE FEEDBACK</p>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="text-right">
-            <p className="text-sm font-semibold">{user?.fullName || ""}</p>
-            <p className="text-xs text-[#4B5545]">{user?.role || ""}</p>
+    <div className="min-h-screen bg-[#F4F7F6]">
+      <Sidebar items={instructorNavigation} collapsibleItems />
+      <div className="ml-[260px] min-h-screen">
+        <header className="relative z-20 flex h-20 items-center justify-between border-b border-[#E5E8E3] bg-white px-8">
+          <div>
+            <h2 className="text-lg font-semibold text-[#2B5748]">
+              Welcome, {user?.fullName || "Instructor"}
+            </h2>
+            <p className="text-sm text-[#899187]">
+              {user?.role || "Instructor"} · Course Feedback Survey Tool
+            </p>
           </div>
-          <button onClick={handleLogout} disabled={loggingOut} className="rounded-full border border-[#A6B398]/50 px-4 py-2 text-sm font-semibold hover:bg-[#F4F7F6] disabled:opacity-60">
-            {loggingOut ? "Signing out…" : "Log out"}
-          </button>
-        </div>
-      </header>
-      <main className="mx-auto max-w-6xl px-6 py-12 md:px-10">{children}</main>
+        </header>
+        <main className="w-full min-w-0 overflow-x-clip p-8">{children}</main>
+      </div>
     </div>
   );
 }

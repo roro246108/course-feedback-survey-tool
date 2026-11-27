@@ -13,13 +13,13 @@ const invitationAcceptanceController = require("../controllers/invitationAccepta
 const passwordResetController = require("../controllers/passwordResetController");
 
 // Middleware
-const authenticateToken = require("../../middleware/authenticateToken");
-const authorizeRole = require("../../middleware/authorizeRole");
+const authenticateToken = require("../../shared/middleware/authenticateToken");
+const authorizeRole = require("../../shared/middleware/authorizeRole");
 
 const {
   issueCsrfToken,
   csrfProtection,
-} = require("../../middleware/csrfProtection");
+} = require("../../shared/middleware/csrfProtection");
 
 // Rate limiters
 const {
@@ -29,7 +29,7 @@ const {
   emailVerificationLimiter,
   invitationAcceptanceLimiter,
   invitationCreationLimiter,
-} = require("../../middleware/rateLimiters");
+} = require("../../shared/middleware/rateLimiters");
 
 // Get CSRF token
 router.get(
@@ -68,6 +68,14 @@ router.post(
   "/verify-email",
   emailVerificationLimiter,
   emailVerificationController.verifyEmail
+);
+
+router.post(
+  "/resend-verification",
+  authLimiter,
+  emailVerificationLimiter,
+  csrfProtection,
+  emailVerificationController.resendVerificationEmail
 );
 
 // Accept an account invitation

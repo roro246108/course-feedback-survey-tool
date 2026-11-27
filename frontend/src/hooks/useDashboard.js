@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 import {
-    getDashboardStats,
+    getAdminDashboardStats,
     getResponseTrend,
     getSurveyStatus,
     getRecentSurveys
 } from '../services/dashboardService';
 
 function useDashboard() {
+    const { apiFetch } = useAuth();
     const [stats, setStats] = useState(null);
     const [responseTrend, setResponseTrend] = useState([]);
     const [surveyStatus, setSurveyStatus] = useState([]);
@@ -17,19 +19,26 @@ function useDashboard() {
     const [error, setError] = useState(null);
 
     useEffect(() => {
+        const controller = new AbortController();
+
         const fetchDashboardData = async () => {
             try {
+                setLoading(true);
+                setError(null);
+
                 const [
                     statsData,
                     trendData,
                     statusData,
                     surveysData
                 ] = await Promise.all([
-                    getDashboardStats(),
-                    getResponseTrend(),
-                    getSurveyStatus(),
-                    getRecentSurveys()
+                    getAdminDashboardStats(apiFetch, { signal: controller.signal }),
+                    getResponseTrend(apiFetch, { signal: controller.signal }),
+                    getSurveyStatus(apiFetch, { signal: controller.signal }),
+                    getRecentSurveys(apiFetch, { signal: controller.signal })
                 ]);
+
+                if (controller.signal.aborted) return;
 
                 setStats(statsData);
                 setResponseTrend(trendData);
@@ -37,14 +46,20 @@ function useDashboard() {
                 setRecentSurveys(surveysData);
 
             } catch (err) {
-                setError(err.message);
+                if (!controller.signal.aborted) {
+                    setError(err.message || 'Unable to load dashboard data.');
+                }
             } finally {
-                setLoading(false);
+                if (!controller.signal.aborted) {
+                    setLoading(false);
+                }
             }
         };
 
         fetchDashboardData();
-    }, []);
+
+        return () => controller.abort();
+    }, [apiFetch]);
 
     return {
         stats,

@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 import {
   createSurvey,
   getCourses,
@@ -9,6 +10,7 @@ import {
 } from '../../services/surveyService';
 
 function CreateSurvey() {
+  const { apiFetch } = useAuth();
 
   // Form State
   const [formData, setFormData] = useState({
@@ -50,7 +52,7 @@ function CreateSurvey() {
 
     const fetchCourses = async () => {
       try {
-        const result = await getCourses({ signal: controller.signal });
+        const result = await getCourses({ signal: controller.signal }, apiFetch);
         setCourses(result);
 
       } catch (error) {
@@ -67,7 +69,7 @@ function CreateSurvey() {
     fetchCourses();
 
     return () => controller.abort();
-  }, []);
+  }, [apiFetch]);
 
   // Fetch Semesters
   useEffect(() => {
@@ -75,7 +77,7 @@ function CreateSurvey() {
 
     const fetchSemesters = async () => {
       try {
-        const result = await getSemesters({ signal: controller.signal });
+        const result = await getSemesters({ signal: controller.signal }, apiFetch);
         setSemesters(result);
 
       } catch (error) {
@@ -92,7 +94,7 @@ function CreateSurvey() {
     fetchSemesters();
 
     return () => controller.abort();
-  }, []);
+  }, [apiFetch]);
 
   // Fetch Instructors Based on Selected Course and Semester
   useEffect(() => {
@@ -109,7 +111,8 @@ function CreateSurvey() {
         const result = await getInstructorsByCourseAndSemester(
           formData.course,
           formData.semester,
-          { signal: controller.signal }
+          { signal: controller.signal },
+          apiFetch
         );
         setInstructors(result);
 
@@ -130,7 +133,7 @@ function CreateSurvey() {
       controller.abort();
     };
 
-  }, [formData.course, formData.semester]);
+  }, [apiFetch, formData.course, formData.semester]);
 
   // Handle Input Changes
   const handleChange = (event) => {
@@ -317,7 +320,7 @@ function CreateSurvey() {
           ...question,
           question_text: question.question_text.trim()
         }))
-      });
+      }, apiFetch);
 
       setSubmitSuccess(
         `Survey created successfully${createdSurvey?.survey_id

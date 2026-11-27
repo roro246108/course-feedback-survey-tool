@@ -5,6 +5,7 @@ const pool = require("../../database/db");
 async function createInvitation(
   {
     email,
+    academicEmail,
     fullName,
     role,
     tokenHash,
@@ -16,16 +17,18 @@ async function createInvitation(
   const query = `
     INSERT INTO account_invitations (
       email,
+      academic_email,
       full_name,
       role,
       token_hash,
       invited_by,
       expires_at
     )
-    VALUES ($1, $2, $3, $4, $5, $6)
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
     RETURNING
       invitation_id,
       email,
+      academic_email,
       full_name,
       role,
       invited_by,
@@ -35,6 +38,7 @@ async function createInvitation(
 
   const result = await db.query(query, [
     email,
+    academicEmail || null,
     fullName,
     role,
     tokenHash,
@@ -59,6 +63,7 @@ async function findInvitationForUpdate(tokenHash, db) {
     SELECT
       invitation_id,
       email,
+      academic_email,
       full_name,
       role,
       token_hash,
@@ -132,17 +137,20 @@ async function findActiveInvitationByEmail(email, db = pool) {
   return result.rows[0] || null;
 }
 
-// Revoke previous invitations for the same normalized email.
-async function revokeActiveInvitationsByEmail(email, db = pool) {
+// Revoke invitations that overlap any normalized email address.
+async function revokeActiveInvitationsByEmails(emails, db = pool) {
   const query = `
     UPDATE account_invitations
     SET revoked_at = CURRENT_TIMESTAMP
-    WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+    WHERE (
+        LOWER(TRIM(email)) = ANY($1::text[])
+        OR LOWER(TRIM(academic_email)) = ANY($1::text[])
+      )
       AND accepted_at IS NULL
       AND revoked_at IS NULL;
   `;
 
-  const result = await db.query(query, [email]);
+  const result = await db.query(query, [emails]);
 
   return result.rowCount;
 }
@@ -153,5 +161,5 @@ module.exports = {
   markInvitationAccepted,
   revokeInvitation,
   findActiveInvitationByEmail,
-  revokeActiveInvitationsByEmail,
+  revokeActiveInvitationsByEmails,
 };

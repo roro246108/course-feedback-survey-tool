@@ -136,7 +136,11 @@ async function login({
       userAgent,
     });
 
-    throw new Error("Your account is not active.");
+    throw new Error(
+      user.account_status === "Inactive"
+        ? "Your account has been deactivated. Contact an administrator."
+        : "Your account is not active."
+    );
   }
 
   const client = await pool.connect();
@@ -151,8 +155,17 @@ async function login({
         client
       );
 
+    if (!currentUser) {
+      throw new Error("Your account is not active.");
+    }
+
+    if (currentUser.account_status === "Inactive") {
+      throw new Error(
+        "Your account has been deactivated. Contact an administrator."
+      );
+    }
+
     if (
-      !currentUser ||
       currentUser.account_status !== "Active" ||
       !currentUser.email_verified
     ) {

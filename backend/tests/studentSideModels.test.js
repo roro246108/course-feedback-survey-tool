@@ -88,9 +88,11 @@ test("survey detail query returns only survey/course/instructor display fields a
   assert.equal(survey.survey_id, 31);
   assert.deepEqual(survey.questions, [{ question_id: 8, question_type: "Rating" }]);
   assert.deepEqual(queries[0].params, [31, 17]);
+  assert.deepEqual(queries[1].params, [31]);
   assert.doesNotMatch(queries[0].query.split("FROM surveys")[0], /student_id|email/);
   assert.match(queries[0].query, /NOT EXISTS \([\s\S]*FROM participation/);
-  assert.match(queries[1].query, /ORDER BY display_order ASC/);
+  assert.match(queries[1].query, /WHERE survey_id = \$1/);
+  assert.match(queries[1].query, /ORDER BY display_order ASC, question_id ASC/);
 });
 
 test("survey details stop at the access query when no eligible open survey is found", async () => {

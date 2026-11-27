@@ -18,7 +18,7 @@ const csrfCookieOptions = {
   httpOnly: false,
   secure: isProduction,
   sameSite: "lax",
-  path: "/api/auth",
+  path: "/api",
 };
 
 function createSignature(randomValue) {
@@ -72,6 +72,10 @@ function isValidSignature(token) {
 function issueCsrfToken(req, res) {
   const token = generateCsrfToken();
 
+  res.clearCookie("csrfToken", {
+    ...csrfCookieOptions,
+    path: "/api/auth",
+  });
   res.cookie("csrfToken", token, {
     ...csrfCookieOptions,
     maxAge: 24 * 60 * 60 * 1000,

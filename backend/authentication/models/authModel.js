@@ -23,6 +23,23 @@ async function findUserByEmail(email, db = pool) {
   return result.rows[0] || null;
 }
 
+async function findUserByEmailAddresses(emails, db = pool) {
+  const query = `
+    SELECT user_id
+    FROM users
+    WHERE LOWER(TRIM(email)) = ANY($1::text[])
+      OR (
+        role IN ('Student', 'Instructor')
+        AND LOWER(TRIM(personal_email)) = ANY($1::text[])
+      )
+    LIMIT 1;
+  `;
+
+  const result = await db.query(query, [emails]);
+
+  return result.rows[0] || null;
+}
+
 // Find a user by ID.
 async function findUserById(userId, db = pool) {
   const query = `
@@ -68,7 +85,7 @@ async function findUserByIdForUpdate(userId, db) {
 
 // Create a user after a valid invitation is accepted.
 async function createUser(
-  { fullName, email, passwordHash, role },
+  { fullName, email, personalEmail, passwordHash, role },
   db = pool
 ) {
   const normalizedEmail = email.trim().toLowerCase();
@@ -77,6 +94,7 @@ async function createUser(
     INSERT INTO users (
       full_name,
       email,
+      personal_email,
       password_hash,
       role,
       account_status,
@@ -84,16 +102,16 @@ async function createUser(
       updated_at
     )
     VALUES (
-      $1, $2, $3, $4,
+      $1, $2, $3, $4, $5,
       'Pending',
       FALSE,
-      CURRENT_TIMESTAMP,
       CURRENT_TIMESTAMP
     )
     RETURNING
       user_id,
       full_name,
       email,
+      personal_email,
       role,
       account_status,
       email_verified,
@@ -103,6 +121,7 @@ async function createUser(
   const result = await db.query(query, [
     fullName.trim(),
     normalizedEmail,
+    personalEmail || null,
     passwordHash,
     role,
   ]);
@@ -150,6 +169,7 @@ async function activateVerifiedUser(userId, db = pool) {
 
 module.exports = {
   findUserByEmail,
+  findUserByEmailAddresses,
   findUserById,
   findUserByIdForUpdate,
   createUser,

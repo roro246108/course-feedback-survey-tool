@@ -24,8 +24,11 @@ async function testEmail() {
       text: "This is a test email from the Course Feedback Survey Tool.",
     });
 
-    console.log("Test email accepted by Resend.");
-    console.log("Email ID:", result.id);
+    console.log("Test email sent successfully.");
+    const messageId = result.id || result.messageId;
+    if (messageId) {
+      console.log("Message ID:", messageId);
+    }
   } catch (error) {
     console.error("Email test failed:", error.message);
     process.exitCode = 1;

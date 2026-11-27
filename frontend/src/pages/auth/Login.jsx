@@ -6,13 +6,16 @@ import loginImage from "../../assets/images/login.jpg";
 function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useAuth();
+  const { login, authRequest } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verificationNotice, setVerificationNotice] = useState("");
+  const [verificationError, setVerificationError] = useState("");
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -25,7 +28,7 @@ function Login() {
 
       const roleDestinations = {
         Student: "/",
-        Instructor: "/instructor",
+        Instructor: "/instructor/reports",
         Admin: "/admin",
       };
 
@@ -37,6 +40,32 @@ function Login() {
       setError(err.message || "Unable to log in. Please try again.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleResendVerification() {
+    setResendingVerification(true);
+    setVerificationNotice("");
+    setVerificationError("");
+    try {
+      const response = await authRequest("resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(result.message || "Unable to resend the verification email.");
+      }
+      setVerificationNotice(
+        result.message || "If an eligible account exists, a verification email has been sent."
+      );
+    } catch (requestError) {
+      setVerificationError(
+        requestError.message || "Unable to resend the verification email."
+      );
+    } finally {
+      setResendingVerification(false);
     }
   }
 
@@ -155,6 +184,26 @@ function Login() {
                 >
                   {error}
                 </div>
+              )}
+              {error.toLowerCase().includes("verify your email") && (
+                <button
+                  type="button"
+                  disabled={resendingVerification || !email.trim()}
+                  onClick={handleResendVerification}
+                  className="w-full rounded-xl border border-[#A6B398]/50 px-4 py-3 text-sm font-semibold text-[#2B5748] disabled:opacity-60"
+                >
+                  {resendingVerification ? "Sending verification email..." : "Resend verification email"}
+                </button>
+              )}
+              {verificationNotice && (
+                <p role="status" className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-800">
+                  {verificationNotice}
+                </p>
+              )}
+              {verificationError && (
+                <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+                  {verificationError}
+                </p>
               )}
 
               {/* Submit */}

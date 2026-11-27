@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const rateLimitMiddleware = require("../middleware/rateLimitMiddleware");
+const rateLimitMiddleware = require("../shared/middleware/rateLimitMiddleware");
 
 function createResponse() {
   return {

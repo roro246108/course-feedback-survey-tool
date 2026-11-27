@@ -1,17 +1,27 @@
 const pool = require('../../shared/config/db');
 
-const getDashboardStats = async () => {
-    const result = await pool.query(`
+const getDashboardStats = async (db = pool) => {
+    const result = await db.query(`
         SELECT
+            (SELECT COUNT(*) FROM users WHERE role = 'Student') AS total_students,
+            (SELECT COUNT(*) FROM users WHERE role = 'Instructor') AS total_instructors,
             (SELECT COUNT(*) FROM surveys) AS total_surveys,
-            (SELECT COUNT(*) FROM surveys WHERE status = 'Published') AS published_surveys,
+            (
+                SELECT COUNT(*)
+                FROM surveys
+                WHERE status = 'Published'
+                  AND opening_date <= CURRENT_TIMESTAMP
+                  AND closing_date > CURRENT_TIMESTAMP
+            ) AS active_surveys,
             (SELECT COUNT(*) FROM feedback_submissions) AS total_responses,
             (SELECT COUNT(*) FROM courses) AS total_courses
     `);
 
     return {
+        total_students: Number(result.rows[0].total_students),
+        total_instructors: Number(result.rows[0].total_instructors),
         total_surveys: Number(result.rows[0].total_surveys),
-        published_surveys: Number(result.rows[0].published_surveys),
+        active_surveys: Number(result.rows[0].active_surveys),
         total_responses: Number(result.rows[0].total_responses),
         total_courses: Number(result.rows[0].total_courses)
     };

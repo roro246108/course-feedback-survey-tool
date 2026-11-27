@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, RefreshCw, X } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 import {
   getSurveyById,
@@ -20,6 +21,7 @@ const getDateValue = (value) => {
 function EditSurvey() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { apiFetch } = useAuth();
 
   const [formData, setFormData] = useState({
     title: '',
@@ -59,9 +61,9 @@ function EditSurvey() {
         setPageError('');
 
         const [survey, coursesData, semestersData] = await Promise.all([
-          getSurveyById(id, { signal: controller.signal }),
-          getCourses({ signal: controller.signal }),
-          getSemesters({ signal: controller.signal })
+          getSurveyById(id, { signal: controller.signal }, apiFetch),
+          getCourses({ signal: controller.signal }, apiFetch),
+          getSemesters({ signal: controller.signal }, apiFetch)
         ]);
 
         if (controller.signal.aborted) return;
@@ -116,7 +118,7 @@ function EditSurvey() {
     loadSurvey();
 
     return () => controller.abort();
-  }, [id]);
+  }, [apiFetch, id]);
 
   // ============================================
   // LOAD INSTRUCTORS WHEN COURSE / SEMESTER CHANGE
@@ -135,7 +137,8 @@ function EditSurvey() {
         const data = await getInstructorsByCourseAndSemester(
           formData.course,
           formData.semester,
-          { signal: controller.signal }
+          { signal: controller.signal },
+          apiFetch
         );
 
         if (!controller.signal.aborted) {
@@ -156,7 +159,7 @@ function EditSurvey() {
     loadInstructors();
 
     return () => controller.abort();
-  }, [formData.course, formData.semester]);
+  }, [apiFetch, formData.course, formData.semester]);
 
   // ============================================
   // HANDLE FORM CHANGES
@@ -349,7 +352,7 @@ function EditSurvey() {
         }))
       };
 
-      await updateSurvey(id, payload);
+      await updateSurvey(id, payload, apiFetch);
 
       navigate('/admin/surveys', {
         state: {

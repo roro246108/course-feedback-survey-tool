@@ -7,6 +7,7 @@ import { AuthProvider } from "./context/AuthContext";
 // Layouts
 import StudentLayout from "./layouts/StudentLayout";
 import AdminLayout from "./layouts/AdminLayout";
+import RoleDashboardLayout from "./components/layout/RoleDashboardLayout";
 
 // Authentication Pages
 import Login from "./pages/auth/Login";
@@ -20,6 +21,7 @@ import StudentHome from "./pages/student/StudentHome";
 import AvailableSurveys from "./pages/student/AvailableSurveys";
 import SurveyDetails from "./pages/student/SurveyDetails";
 import MySubmissions from "./pages/student/MySubmissions";
+import MyCourses from "./pages/student/MyCourses";
 
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
@@ -27,9 +29,18 @@ import CreateSurvey from "./pages/admin/CreateSurvey";
 import ManageSurveys from "./pages/admin/ManageSurveys";
 import EditSurvey from "./pages/admin/EditSurvey";
 import ManageQuestions from "./pages/admin/ManageQuestions";
+import StudentManagement from "./pages/admin/StudentManagement";
 
+<<<<<<< Updated upstream
+=======
+// Admin Pages - Analytics & Reporting (Merna)
+import AnalyticsOverview from "./pages/instructor/AnalyticsOverview";
+import SemesterComparison from "./pages/instructor/SemesterComparison";
+import ExportReports from "./pages/instructor/ExportReports";
+
+>>>>>>> Stashed changes
 // Instructor Pages
-import InstructorDashboard from "./pages/instructor/Dashboard";
+import InstructorAnalyticsOverview from "./pages/instructor/AnalyticsOverview";
 
 // Authentication Protection
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -53,6 +64,17 @@ function UnauthorizedPage() {
         Go Back
       </button>
     </div>
+  );
+}
+
+function AdminModuleNotice({ moduleName }) {
+  return (
+    <section className="rounded-2xl border border-[#E5E8E3] bg-white p-8 shadow-sm">
+      <h1 className="text-2xl font-bold text-[#263D32]">{moduleName}</h1>
+      <p className="mt-3 text-sm text-[#526052]">
+        This section does not have a page or API implementation in the current project.
+      </p>
+    </section>
   );
 }
 
@@ -113,13 +135,34 @@ function App() {
                 </StudentLayout>
               }
             />
+
+            <Route
+              path="/my-courses"
+              element={
+                <StudentLayout>
+                  <MyCourses />
+                </StudentLayout>
+              }
+            />
           </Route>
 
           {/* Protected Instructor Routes */}
-          <Route element={<ProtectedRoute allowedRoles={["Instructor"]} />}>
+          <Route element={<ProtectedRoute allowedRoles={["Admin", "Instructor"]} />}>
             <Route
               path="/instructor"
-              element={<InstructorDashboard />}
+              element={<Navigate to="/instructor/reports" replace />}
+            />
+            <Route
+              path="/instructor/reports"
+              element={<RoleDashboardLayout><InstructorAnalyticsOverview /></RoleDashboardLayout>}
+            />
+            <Route
+              path="/instructor/reports/semesters"
+              element={<RoleDashboardLayout><SemesterComparison /></RoleDashboardLayout>}
+            />
+            <Route
+              path="/instructor/reports/export"
+              element={<RoleDashboardLayout><ExportReports /></RoleDashboardLayout>}
             />
           </Route>
 
@@ -145,7 +188,38 @@ function App() {
               }
             />
 
+<<<<<<< Updated upstream
             {/* Create Survey */}
+=======
+            <Route
+              path="/admin/courses"
+              element={
+                <AdminLayout>
+                  <AdminModuleNotice moduleName="Courses" />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/instructors"
+              element={
+                <AdminLayout>
+                  <AdminModuleNotice moduleName="Instructors" />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/users"
+              element={
+                <AdminLayout>
+                  <StudentManagement />
+                </AdminLayout>
+              }
+            />
+
+            {/* Survey Management */}
+>>>>>>> Stashed changes
             <Route
               path="/admin/surveys/create"
               element={

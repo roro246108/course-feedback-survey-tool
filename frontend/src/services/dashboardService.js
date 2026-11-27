@@ -49,9 +49,10 @@ export async function getDashboardStats(apiFetch) {
 const ADMIN_DASHBOARD_URL = `${API_BASE_URL}/dashboard`;
 
 // Get admin dashboard statistics
-export async function getAdminDashboardStats(apiFetch) {
+export async function getAdminDashboardStats(apiFetch, options = {}) {
   const response = await apiFetch(
-    `${ADMIN_DASHBOARD_URL}/stats`
+    `${ADMIN_DASHBOARD_URL}/stats`,
+    options
   );
 
   const result = await response.json();
@@ -66,9 +67,10 @@ export async function getAdminDashboardStats(apiFetch) {
 }
 
 // Get response trend
-export async function getResponseTrend(apiFetch) {
+export async function getResponseTrend(apiFetch, options = {}) {
   const response = await apiFetch(
-    `${ADMIN_DASHBOARD_URL}/response-trend`
+    `${ADMIN_DASHBOARD_URL}/response-trend`,
+    options
   );
 
   const result = await response.json();
@@ -83,9 +85,10 @@ export async function getResponseTrend(apiFetch) {
 }
 
 // Get survey status
-export async function getSurveyStatus(apiFetch) {
+export async function getSurveyStatus(apiFetch, options = {}) {
   const response = await apiFetch(
-    `${ADMIN_DASHBOARD_URL}/survey-status`
+    `${ADMIN_DASHBOARD_URL}/survey-status`,
+    options
   );
 
   const result = await response.json();
@@ -100,9 +103,10 @@ export async function getSurveyStatus(apiFetch) {
 }
 
 // Get recent surveys
-export async function getRecentSurveys(apiFetch) {
+export async function getRecentSurveys(apiFetch, options = {}) {
   const response = await apiFetch(
-    `${ADMIN_DASHBOARD_URL}/recent-surveys`
+    `${ADMIN_DASHBOARD_URL}/recent-surveys`,
+    options
   );
 
   const result = await response.json();

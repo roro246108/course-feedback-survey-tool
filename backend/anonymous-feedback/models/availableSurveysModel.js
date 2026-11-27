@@ -192,7 +192,7 @@ async function getSurveyById(surveyId, studentId, db = pool) {
 
     WHERE survey_id = $1
 
-    ORDER BY display_order ASC;
+    ORDER BY display_order ASC, question_id ASC;
   `;
 
   const questionsResult = await db.query(questionsQuery, [

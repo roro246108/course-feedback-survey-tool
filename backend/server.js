@@ -20,10 +20,13 @@ const studentSurveyRoutes = require("./anonymous-feedback/routes/studentSurveyRo
 
 // Authentication Routes
 const authRoutes = require("./authentication/routes/authRoutes");
+const adminUserRoutes = require("./authentication/routes/adminUserRoutes");
 
 // Survey Management Routes
 const surveyRoutes = require("./survey-management/routes/surveyRoutes");
 const surveyDashboardRoutes = require("./survey-management/routes/dashboardRoutes");
+const analyticsRoutes = require("./analytics-reporting/routes/analyticsRoutes");
+const semesterComparisonRoutes = require("./analytics-reporting/routes/semesterComparisonRoutes");
 
 const app = express();
 
@@ -48,8 +51,12 @@ app.use(cookieParser());
 
 // Authentication Routes
 app.use("/api/auth", authRoutes);
+<<<<<<< Updated upstream
 
 // Anonymous Feedback Routes
+=======
+app.use("/api/admin", adminUserRoutes);
+>>>>>>> Stashed changes
 app.use("/api/feedback/dashboard", dashboardRoutes);
 app.use("/api/student", studentSurveyRoutes);
 app.use("/api", feedbackRoutes);
@@ -79,6 +86,7 @@ app.use((error, req, res, next) => {
     message: "An unexpected server error occurred.",
   });
 });
+<<<<<<< Updated upstream
 
 // Start Server
 app.listen(PORT, () => {
@@ -88,6 +96,8 @@ app.listen(PORT, () => {
 });
 
 // Start server
+=======
+>>>>>>> Stashed changes
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

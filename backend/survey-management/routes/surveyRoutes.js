@@ -2,7 +2,13 @@
 const express = require('express');
 const router = express.Router();
 
+const authenticateToken = require('../../shared/middleware/authenticateToken');
+const authorizeRole = require('../../shared/middleware/authorizeRole');
+
 const surveyController = require('../controllers/surveyController');
+
+// All Survey Management endpoints are Admin-only.
+router.use(authenticateToken, authorizeRole('Admin'));
 
 // GET all surveys
 router.get('/', surveyController.getAllSurveys);
@@ -19,26 +25,26 @@ router.get(
 // GET all semesters
 router.get('/semesters', surveyController.getAllSemesters);
 
-// MANAGE questions for one survey
+// Manage questions for one survey
 router.get('/:id/questions', surveyController.getSurveyQuestions);
 router.post('/:id/questions', surveyController.addQuestion);
 router.put('/:id/questions/reorder', surveyController.reorderQuestions);
 router.put('/:id/questions/:questionId', surveyController.updateQuestion);
 router.delete('/:id/questions/:questionId', surveyController.deleteQuestion);
 
-// UPDATE survey
+// Update survey
 router.put('/:id', surveyController.updateSurvey);
 
-// CHANGE survey status
+// Change survey status
 router.patch('/:id/status', surveyController.changeSurveyStatus);
 
-// DELETE survey
+// Delete survey
 router.delete('/:id', surveyController.deleteSurvey);
 
-// GET survey by ID
+// Get survey by ID
 router.get('/:id', surveyController.getSurveyById);
 
-// CREATE survey
+// Create survey
 router.post('/', surveyController.createSurvey);
 
 module.exports = router;

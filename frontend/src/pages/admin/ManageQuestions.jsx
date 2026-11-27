@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import {
   ArrowDown,
   ArrowLeft,
@@ -37,6 +38,7 @@ const statusClassName = (status) => {
 function ManageQuestions() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { apiFetch } = useAuth();
   const [survey, setSurvey] = useState(null);
   const [surveys, setSurveys] = useState([]);
   const [questions, setQuestions] = useState([]);
@@ -53,14 +55,14 @@ function ManageQuestions() {
   const [formError, setFormError] = useState('');
 
   const loadSurvey = useCallback(async (signal) => {
-    const data = await getSurveyQuestions(id, { signal });
+    const data = await getSurveyQuestions(id, { signal }, apiFetch);
 
     if (Number(data.survey_id) !== Number(id)) {
       throw new Error('The server returned a different survey.');
     }
 
     return data;
-  }, [id]);
+  }, [apiFetch, id]);
 
   const applySurvey = useCallback((data) => {
     setSurvey(data);
@@ -87,7 +89,7 @@ function ManageQuestions() {
         if (id === undefined) {
           const result = await getSurveys({
             signal: controller.signal
-          });
+          }, apiFetch);
           if (active) {
             setSurveys(Array.isArray(result) ? result : []);
           }
@@ -114,7 +116,7 @@ function ManageQuestions() {
       active = false;
       controller.abort();
     };
-  }, [applySurvey, id, loadSurvey]);
+  }, [apiFetch, applySurvey, id, loadSurvey]);
 
   const openAddForm = () => {
     if (hasResponses) {
@@ -175,9 +177,9 @@ function ManageQuestions() {
       };
 
       if (editingQuestion) {
-        await updateQuestion(id, editingQuestion.question_id, questionData);
+        await updateQuestion(id, editingQuestion.question_id, questionData, apiFetch);
       } else {
-        await addQuestion(id, questionData);
+        await addQuestion(id, questionData, apiFetch);
       }
 
       setFormOpen(false);
@@ -219,7 +221,7 @@ function ManageQuestions() {
     });
 
     try {
-      await deleteQuestion(id, question.question_id);
+      await deleteQuestion(id, question.question_id, apiFetch);
       setNotice({
         type: 'success',
         message: 'Question deleted successfully.'
@@ -264,7 +266,7 @@ function ManageQuestions() {
     try {
       await reorderQuestions(id, {
         question_ids: reordered.map((question) => question.question_id)
-      });
+      }, apiFetch);
     } catch (error) {
       setNotice({
         type: 'error',
