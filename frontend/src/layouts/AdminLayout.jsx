@@ -12,7 +12,7 @@ function AdminLayout({ children }) {
 
         <AdminNavbar />
 
-        <main className="p-8">
+      <main className="w-full min-w-0 overflow-x-clip p-8">
           {children}
         </main>
 
