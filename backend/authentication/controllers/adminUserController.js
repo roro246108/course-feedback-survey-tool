@@ -14,6 +14,7 @@ function parseId(value, label) {
   return Number(value);
 }
 
+<<<<<<< Updated upstream
 function parseCourseIds(value) {
   if (!Array.isArray(value) || value.length === 0) {
     const error = new Error("Select at least one course.");
@@ -48,6 +49,8 @@ function sendBatchAssignmentResponse(res, result, accountType) {
   });
 }
 
+=======
+>>>>>>> Stashed changes
 function sendError(res, error) {
   if (error.status) {
     return res.status(error.status).json({
@@ -195,6 +198,7 @@ async function updateStudentStatus(req, res) {
   }
 }
 
+<<<<<<< Updated upstream
 async function addEnrollment(req, res) {
   try {
     const studentId = parseId(req.params.studentId, "student");
@@ -301,13 +305,18 @@ async function removeEnrollment(req, res) {
   }
 }
 
+=======
+>>>>>>> Stashed changes
 module.exports = {
   getStudents,
   getInstructors,
   getStudent,
   updateStudent,
   updateStudentStatus,
+<<<<<<< Updated upstream
   addEnrollment,
   addInstructorCourseAssignment,
   removeEnrollment,
+=======
+>>>>>>> Stashed changes
 };

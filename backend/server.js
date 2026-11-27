@@ -50,10 +50,14 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
+<<<<<<< Updated upstream
 
 // Anonymous Feedback Routes
 
 
+=======
+app.use("/api/admin", adminUserRoutes);
+>>>>>>> Stashed changes
 app.use("/api/feedback/dashboard", dashboardRoutes);
 app.use("/api/student", studentSurveyRoutes);
 app.use("/api", feedbackRoutes);
@@ -80,6 +84,7 @@ app.use((error, req, res, next) => {
   });
 });
 app.listen(PORT, () => {
+<<<<<<< Updated upstream
   console.log(`Server is running on port ${PORT}`);
 });
 });
@@ -87,5 +92,7 @@ app.listen(PORT, () => {
 
 
 app.listen(PORT, () => {
+=======
+>>>>>>> Stashed changes
   console.log(`Server is running on http://localhost:${PORT}`);
 });

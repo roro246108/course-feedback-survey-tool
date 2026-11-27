@@ -21,6 +21,7 @@ router.patch(
   csrfProtection,
   adminUserController.updateStudentStatus
 );
+<<<<<<< Updated upstream
 router.post(
   "/students/:studentId/enrollments",
   csrfProtection,
@@ -36,5 +37,7 @@ router.delete(
   csrfProtection,
   adminUserController.removeEnrollment
 );
+=======
+>>>>>>> Stashed changes
 
 module.exports = router;
