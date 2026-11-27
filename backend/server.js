@@ -1,4 +1,5 @@
 
+
 const path = require("path");
 const dotenv = require("dotenv");
 
@@ -12,11 +13,17 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 
-// Routes
+// Anonymous Feedback Routes
 const dashboardRoutes = require("./anonymous-feedback/routes/dashboardRoutes");
 const feedbackRoutes = require("./anonymous-feedback/routes/feedbackRoutes");
 const studentSurveyRoutes = require("./anonymous-feedback/routes/studentSurveyRoutes");
+
+// Authentication Routes
 const authRoutes = require("./authentication/routes/authRoutes");
+
+// Survey Management Routes
+const surveyRoutes = require("./survey-management/routes/surveyRoutes");
+const surveyDashboardRoutes = require("./survey-management/routes/dashboardRoutes");
 
 const app = express();
 
@@ -25,10 +32,9 @@ const PORT = process.env.PORT || 5000;
 const FRONTEND_URL =
   process.env.FRONTEND_URL || "http://localhost:5173";
 
-// Security middleware
+// Security Middleware
 app.use(helmet());
 
-// CORS configuration
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -36,23 +42,23 @@ app.use(
   })
 );
 
-// Request parsing
+// Request Parsing
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 
-// Authentication routes
+// Authentication Routes
 app.use("/api/auth", authRoutes);
 
-// Existing student dashboard
+// Anonymous Feedback Routes
 app.use("/api/feedback/dashboard", dashboardRoutes);
-
-// Student survey reads
 app.use("/api/student", studentSurveyRoutes);
-
-// Anonymous feedback submission
 app.use("/api", feedbackRoutes);
 
-// Health check
+// Survey Management Routes
+app.use("/api/dashboard", surveyDashboardRoutes);
+app.use("/api/surveys", surveyRoutes);
+
+// Health Check
 app.get("/", (req, res) => {
   return res.status(200).json({
     success: true,
@@ -60,7 +66,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// Central error handler
+// Central Error Handler
 app.use((error, req, res, next) => {
   console.error("API Error:", error);
 
@@ -72,6 +78,13 @@ app.use((error, req, res, next) => {
     success: false,
     message: "An unexpected server error occurred.",
   });
+});
+
+// Start Server
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
+
 });
 
 // Start server

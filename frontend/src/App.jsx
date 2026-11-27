@@ -1,12 +1,12 @@
 
+
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
 
 // Layouts
 import StudentLayout from "./layouts/StudentLayout";
-import AdminDashboard from "./pages/admin/Dashboard";
-import InstructorDashboard from "./pages/instructor/Dashboard";
+import AdminLayout from "./layouts/AdminLayout";
 
 // Authentication Pages
 import Login from "./pages/auth/Login";
@@ -20,6 +20,16 @@ import StudentHome from "./pages/student/StudentHome";
 import AvailableSurveys from "./pages/student/AvailableSurveys";
 import SurveyDetails from "./pages/student/SurveyDetails";
 import MySubmissions from "./pages/student/MySubmissions";
+
+// Admin Pages
+import AdminDashboard from "./pages/admin/Dashboard";
+import CreateSurvey from "./pages/admin/CreateSurvey";
+import ManageSurveys from "./pages/admin/ManageSurveys";
+import EditSurvey from "./pages/admin/EditSurvey";
+import ManageQuestions from "./pages/admin/ManageQuestions";
+
+// Instructor Pages
+import InstructorDashboard from "./pages/instructor/Dashboard";
 
 // Authentication Protection
 import ProtectedRoute from "./components/auth/ProtectedRoute";
@@ -51,34 +61,20 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
+
           {/* Authentication Routes */}
           <Route path="/login" element={<Login />} />
 
-          <Route
-            path="/accept-invitation"
-            element={<AcceptInvitation />}
-          />
+          <Route path="/accept-invitation" element={<AcceptInvitation />} />
 
-          <Route
-            path="/verify-email"
-            element={<VerifyEmail />}
-          />
+          <Route path="/verify-email" element={<VerifyEmail />} />
 
-          <Route
-            path="/forgot-password"
-            element={<ForgotPassword />}
-          />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
-          <Route
-            path="/reset-password"
-            element={<ResetPassword />}
-          />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* Unauthorized Route */}
-          <Route
-            path="/unauthorized"
-            element={<UnauthorizedPage />}
-          />
+          <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
           {/* Protected Student Routes */}
           <Route element={<ProtectedRoute allowedRoles={["Student"]} />}>
@@ -117,22 +113,100 @@ function App() {
                 </StudentLayout>
               }
             />
-
           </Route>
 
+          {/* Protected Instructor Routes */}
           <Route element={<ProtectedRoute allowedRoles={["Instructor"]} />}>
-            <Route path="/instructor" element={<InstructorDashboard />} />
+            <Route
+              path="/instructor"
+              element={<InstructorDashboard />}
+            />
           </Route>
 
+          {/* Protected Admin Routes */}
           <Route element={<ProtectedRoute allowedRoles={["Admin"]} />}>
-            <Route path="/admin" element={<AdminDashboard />} />
+
+            {/* Admin Dashboard */}
+            <Route
+              path="/admin"
+              element={
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/dashboard"
+              element={
+                <AdminLayout>
+                  <AdminDashboard />
+                </AdminLayout>
+              }
+            />
+
+            {/* Create Survey */}
+            <Route
+              path="/admin/surveys/create"
+              element={
+                <AdminLayout>
+                  <CreateSurvey />
+                </AdminLayout>
+              }
+            />
+
+            {/* Manage Surveys */}
+            <Route
+              path="/admin/surveys"
+              element={
+                <AdminLayout>
+                  <ManageSurveys />
+                </AdminLayout>
+              }
+            />
+
+            {/* Manage Questions */}
+            <Route
+              path="/admin/questions"
+              element={
+                <AdminLayout>
+                  <ManageQuestions />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/surveys/:id/questions"
+              element={
+                <AdminLayout>
+                  <ManageQuestions />
+                </AdminLayout>
+              }
+            />
+
+            {/* Edit Survey */}
+            <Route
+              path="/admin/surveys/:id/edit"
+              element={
+                <AdminLayout>
+                  <EditSurvey />
+                </AdminLayout>
+              }
+            />
+
           </Route>
 
           {/* Unknown Routes */}
           <Route path="*" element={<Navigate to="/" replace />} />
+
         </Routes>
       </BrowserRouter>
     </AuthProvider>
+  );
+}
+
+export default App;
+
   );
 }
 
