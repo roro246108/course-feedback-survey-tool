@@ -1,5 +1,4 @@
 
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -21,12 +20,17 @@ import AvailableSurveys from "./pages/student/AvailableSurveys";
 import SurveyDetails from "./pages/student/SurveyDetails";
 import MySubmissions from "./pages/student/MySubmissions";
 
-// Admin Pages
+// Admin Pages - Dashboard & Survey Management
 import AdminDashboard from "./pages/admin/Dashboard";
 import CreateSurvey from "./pages/admin/CreateSurvey";
 import ManageSurveys from "./pages/admin/ManageSurveys";
 import EditSurvey from "./pages/admin/EditSurvey";
 import ManageQuestions from "./pages/admin/ManageQuestions";
+
+// Admin Pages - Analytics & Reporting (Merna)
+import AnalyticsOverview from "./pages/admin/AnalyticsOverview";
+import SemesterComparison from "./pages/admin/SemesterComparison";
+import ExportReports from "./pages/admin/ExportReports";
 
 // Instructor Pages
 import InstructorDashboard from "./pages/instructor/Dashboard";
@@ -145,7 +149,7 @@ function App() {
               }
             />
 
-            {/* Create Survey */}
+            {/* Survey Management */}
             <Route
               path="/admin/surveys/create"
               element={
@@ -155,7 +159,6 @@ function App() {
               }
             />
 
-            {/* Manage Surveys */}
             <Route
               path="/admin/surveys"
               element={
@@ -165,7 +168,6 @@ function App() {
               }
             />
 
-            {/* Manage Questions */}
             <Route
               path="/admin/questions"
               element={
@@ -184,12 +186,39 @@ function App() {
               }
             />
 
-            {/* Edit Survey */}
             <Route
               path="/admin/surveys/:id/edit"
               element={
                 <AdminLayout>
                   <EditSurvey />
+                </AdminLayout>
+              }
+            />
+
+            {/* Analytics & Reporting - Merna */}
+            <Route
+              path="/admin/reports"
+              element={
+                <AdminLayout>
+                  <AnalyticsOverview />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/reports/semesters"
+              element={
+                <AdminLayout>
+                  <SemesterComparison />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/reports/export"
+              element={
+                <AdminLayout>
+                  <ExportReports />
                 </AdminLayout>
               }
             />
@@ -202,11 +231,6 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
-  );
-}
-
-export default App;
-
   );
 }
 
