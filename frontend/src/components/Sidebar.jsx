@@ -2,7 +2,6 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
-  ClipboardList,
   BookOpen,
   GraduationCap,
   BarChart3,
@@ -17,16 +16,18 @@ const navigation = [
     path: '/admin/dashboard',
     icon: LayoutDashboard
   },
-  {
-    name: 'Surveys',
-    path: '/admin/surveys',
-    icon: ClipboardList,
-    children: [
-      { name: 'Create Survey', path: '/admin/surveys/create' },
-      { name: 'Manage Surveys', path: '/admin/surveys' },
-      { name: 'Manage Questions', path: '/admin/questions' }
-    ]
-  },
+ 
+{
+  name: 'Reports',
+  path: '/admin/reports',
+  icon: BarChart3,
+  children: [
+    { name: 'Analytics Overview', path: '/admin/reports' },
+    { name: 'Semester Comparison', path: '/admin/reports/semesters' },
+    { name: 'Export Reports', path: '/admin/reports/export' }
+  ]
+}
+,
   {
     name: 'Courses',
     path: '/admin/courses',
@@ -37,11 +38,7 @@ const navigation = [
     path: '/admin/instructors',
     icon: GraduationCap
   },
-  {
-    name: 'Reports',
-    path: '/admin/reports',
-    icon: BarChart3
-  },
+
   {
     name: 'Users',
     path: '/admin/users',
