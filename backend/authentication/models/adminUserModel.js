@@ -7,7 +7,6 @@ const STUDENTS_QUERY = `
     u.full_name,
     u.email,
     u.account_status,
-<<<<<<< Updated upstream
     u.email_verified,
     COALESCE(
       json_agg(
@@ -30,10 +29,6 @@ const STUDENTS_QUERY = `
     ON c.course_id = e.course_id
   LEFT JOIN semesters sem
     ON sem.semester_id = e.semester_id
-=======
-    u.email_verified
-  FROM users u
->>>>>>> Stashed changes
   WHERE u.role = 'Student'
 `;
 
@@ -52,7 +47,6 @@ async function getInstructors(db = pool) {
     SELECT
       u.user_id AS instructor_id,
       u.full_name,
-<<<<<<< Updated upstream
       u.email,
       COALESCE(
         json_agg(
@@ -75,10 +69,6 @@ async function getInstructors(db = pool) {
       ON c.course_id = ci.course_id
     LEFT JOIN semesters sem
       ON sem.semester_id = ci.semester_id
-=======
-      u.email
-    FROM users u
->>>>>>> Stashed changes
     WHERE u.role = 'Instructor'
     GROUP BY u.user_id
     ORDER BY u.full_name, u.user_id;
@@ -184,7 +174,6 @@ async function updateStudentAccountStatus(studentId, accountStatus, db = pool) {
   }
 }
 
-<<<<<<< Updated upstream
 async function addStudentEnrollment(studentId, courseId, semesterId, db = pool) {
   const result = await db.query(`
     INSERT INTO enrollments (student_id, course_id, semester_id)
@@ -482,20 +471,15 @@ async function removeStudentEnrollment(
   return result.rowCount === 1;
 }
 
-=======
->>>>>>> Stashed changes
 module.exports = {
   getStudents,
   getInstructors,
   getStudentById,
   updateStudentName,
   updateStudentAccountStatus,
-<<<<<<< Updated upstream
   addStudentEnrollment,
   addStudentEnrollments,
   addInstructorCourseAssignment,
   addInstructorCourseAssignments,
   removeStudentEnrollment,
-=======
->>>>>>> Stashed changes
 };

@@ -29,10 +29,7 @@ import ManageSurveys from "./pages/admin/ManageSurveys";
 import EditSurvey from "./pages/admin/EditSurvey";
 import ManageQuestions from "./pages/admin/ManageQuestions";
 import StudentManagement from "./pages/admin/StudentManagement";
-<<<<<<< Updated upstream
 
-=======
->>>>>>> Stashed changes
 
 // Admin Pages - Analytics & Reporting (Merna)
 import AnalyticsOverview from "./pages/instructor/AnalyticsOverview";
@@ -189,9 +186,7 @@ function App() {
               }
             />
 
-<<<<<<< Updated upstream
-   
-=======
+
             <Route
               path="/admin/courses"
               element={
@@ -220,7 +215,7 @@ function App() {
             />
 
             {/* Survey Management */}
->>>>>>> Stashed changes
+
             <Route
               path="/admin/surveys/create"
               element={
