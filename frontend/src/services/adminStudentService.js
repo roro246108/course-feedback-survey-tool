@@ -70,7 +70,6 @@ export async function updateStudentName(apiFetch, studentId, fullName) {
   return readResponse(response, "Unable to update the student.");
 }
 
-<<<<<<< Updated upstream
 export async function assignStudentCourses(
   apiFetch,
   studentId,
@@ -135,5 +134,3 @@ export async function removeStudentCourse(
   );
   return readResponse(response, "Unable to remove the course assignment.");
 }
-=======
->>>>>>> Stashed changes

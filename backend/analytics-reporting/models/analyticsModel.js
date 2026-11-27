@@ -1,11 +1,7 @@
 
 const pool = require('../../shared/config/db');
 
-<<<<<<< Updated upstream
-
-=======
 // A response is counted once if it contains at least one meaningful answer.
->>>>>>> Stashed changes
 const ANSWERED_SUBMISSIONS = `
     answered_submissions AS (
         SELECT fs.submission_id, fs.survey_id, fs.submitted_at

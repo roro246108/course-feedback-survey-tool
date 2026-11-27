@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -42,25 +41,13 @@ const navigation = [
   {
     name: 'Reports',
     path: '/admin/reports',
-<<<<<<< Updated upstream
-    icon: BarChart3
-  },
-
-=======
     icon: BarChart3,
     children: [
       { name: 'Analytics Overview', path: '/admin/reports' },
-      {
-        name: 'Semester Comparison',
-        path: '/admin/reports/semesters'
-      },
-      {
-        name: 'Export Reports',
-        path: '/admin/reports/export'
-      }
+      { name: 'Semester Comparison', path: '/admin/reports/semesters' },
+      { name: 'Export Reports', path: '/admin/reports/export' }
     ]
   },
->>>>>>> Stashed changes
   {
     name: 'Users',
     path: '/admin/users',
@@ -123,20 +110,16 @@ function Sidebar({
 
   return (
     <aside className="fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col bg-[#2B5748] px-5 py-7 text-white">
-
-      {/* Logo */}
       <div className="mb-12 flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#DED4AF] text-[#2B5748]">
           <GraduationCap size={27} />
         </div>
-
         <div>
           <h1 className="text-base font-bold">Course Feedback</h1>
           <p className="text-sm text-[#DED4AF]">Survey Tool</p>
         </div>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 space-y-2 overflow-y-auto">
         {items.map((item) => {
           const Icon = item.icon
@@ -185,13 +168,12 @@ function Sidebar({
                     <Icon size={20} />
                     {item.name}
                   </span>
-
                   {item.children && <ChevronDown size={17} />}
                 </NavLink>
               )}
 
               {item.children && (!collapsibleItems || isExpanded) && (
-                <div className="ml-10 mt-2 space-y-1">
+                <div id={childrenId} className="ml-10 mt-2 space-y-1">
                   {item.children.map((child) => (
                     <NavLink
                       key={child.path}
@@ -215,7 +197,6 @@ function Sidebar({
         })}
       </nav>
 
-      {/* Logout */}
       {showLogout && (
         <button
           type="button"
