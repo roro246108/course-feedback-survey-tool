@@ -1,9 +1,9 @@
 
-import { Search, Bell, ChevronDown } from 'lucide-react'
+import { Bell, ChevronDown } from 'lucide-react'
 
 function AdminNavbar() {
   return (
-    <header className="flex h-20 items-center justify-between border-b border-[#E5E8E3] bg-white px-8">
+  <header className="relative z-20 flex h-20 items-center justify-between border-b border-[#E5E8E3] bg-white px-8">
 
       {/* Welcome */}
       <div>
@@ -13,16 +13,6 @@ function AdminNavbar() {
         <p className="text-sm text-[#899187]">
           Course Feedback Survey Tool
         </p>
-      </div>
-
-      {/* Search */}
-      <div className="flex w-[400px] items-center gap-3 rounded-full border border-[#E5E8E3] bg-[#F4F7F6] px-4 py-3">
-        <Search size={19} className="text-[#4B5545]" />
-        <input
-          type="text"
-          placeholder="Search for surveys, courses, or instructors..."
-          className="w-full bg-transparent text-sm outline-none placeholder:text-gray-400"
-        />
       </div>
 
       {/* Profile */}
