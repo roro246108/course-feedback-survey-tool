@@ -27,7 +27,11 @@ dotenv.config = originalDotenvConfig;
 
 test("admin student listing is role-scoped and excludes credential fields", async () => {
   let capturedQuery;
+<<<<<<< Updated upstream
   const expected = [{ student_id: 17, full_name: "Test Student", courses: [] }];
+=======
+  const expected = [{ student_id: 17, full_name: "Test Student" }];
+>>>>>>> Stashed changes
   const db = {
     query: async (query) => {
       capturedQuery = query;
@@ -37,8 +41,12 @@ test("admin student listing is role-scoped and excludes credential fields", asyn
 
   assert.deepEqual(await adminUserModel.getStudents(db), expected);
   assert.match(capturedQuery, /WHERE u\.role = 'Student'/);
+<<<<<<< Updated upstream
   assert.match(capturedQuery, /LEFT JOIN enrollments/);
   assert.match(capturedQuery, /json_agg/);
+=======
+  assert.doesNotMatch(capturedQuery, /LEFT JOIN enrollments|json_agg/);
+>>>>>>> Stashed changes
   assert.doesNotMatch(capturedQuery, /personal_email/i);
   assert.doesNotMatch(capturedQuery, /password|password_hash/i);
 });
@@ -778,6 +786,7 @@ test("verification resend endpoint validates input and preserves the generic res
   }
 });
 
+<<<<<<< Updated upstream
 test("course assignment inserts the exact student-course-semester tuple", async () => {
   let capturedParams;
   let capturedQuery;
@@ -799,6 +808,8 @@ test("course assignment inserts the exact student-course-semester tuple", async 
   assert.match(capturedQuery, /role = 'Student'/);
 });
 
+=======
+>>>>>>> Stashed changes
 test("instructor choices expose academic email only", async () => {
   let capturedQuery;
   const expected = [{
@@ -816,13 +827,18 @@ test("instructor choices expose academic email only", async () => {
   assert.deepEqual(await adminUserModel.getInstructors(db), expected);
   assert.match(capturedQuery, /WHERE u\.role = 'Instructor'/);
   assert.match(capturedQuery, /u\.user_id AS instructor_id/);
+<<<<<<< Updated upstream
   assert.match(capturedQuery, /LEFT JOIN course_instructors ci/);
   assert.match(capturedQuery, /ci\.semester_id/);
   assert.match(capturedQuery, /json_agg/);
+=======
+  assert.doesNotMatch(capturedQuery, /LEFT JOIN course_instructors|json_agg/);
+>>>>>>> Stashed changes
   assert.match(capturedQuery, /email/);
   assert.doesNotMatch(capturedQuery, /personal_email/i);
 });
 
+<<<<<<< Updated upstream
 test("instructor course assignment writes the course-instructor-semester relation", async () => {
   let capturedParams;
   let capturedQuery;
@@ -1103,6 +1119,8 @@ test("batch assignment controller dispatches each role and rejects empty selecti
   }
 });
 
+=======
+>>>>>>> Stashed changes
 test("admin student controller rejects invalid IDs and names before database access", async () => {
   const originalGetStudentById = adminUserModel.getStudentById;
   const originalUpdateStudentName = adminUserModel.updateStudentName;

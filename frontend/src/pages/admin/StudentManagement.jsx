@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+<<<<<<< Updated upstream
 import { MailPlus, RefreshCw, UserRound, UserRoundPen } from "lucide-react";
+=======
+import {
+  MailPlus,
+  RefreshCw,
+  UserRound,
+  UserRoundPen,
+} from "lucide-react";
+>>>>>>> Stashed changes
 import { useAuth } from "../../context/AuthContext";
 import {
   changeStudentStatus,
@@ -160,13 +169,21 @@ function StudentManagement() {
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-bold uppercase tracking-[2px] text-[#89977F]">
+<<<<<<< Updated upstream
             Accounts
+=======
+            Accounts & enrollment
+>>>>>>> Stashed changes
           </p>
           <h1 className="mt-1 font-serif text-3xl font-bold text-[#2B5748]">
             User Management
           </h1>
           <p className="mt-2 max-w-2xl text-sm text-[#647264]">
+<<<<<<< Updated upstream
             Invite students and instructors, and manage account details.
+=======
+            Invite students and instructors and update student account names.
+>>>>>>> Stashed changes
           </p>
         </div>
         <button
@@ -258,6 +275,7 @@ function StudentManagement() {
               {totalAccounts} registered {accountTypeLower}{totalAccounts === 1 ? "" : "s"}
             </p>
           </div>
+<<<<<<< Updated upstream
           <label className="text-sm text-[#526456]">
             Account type
             <select
@@ -273,6 +291,25 @@ function StudentManagement() {
             Search
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, academic email, or ID" className="ml-2 rounded-lg border border-[#D8DED3] px-3 py-2 outline-none focus:border-[#2B5748]" />
           </label>
+=======
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="text-sm text-[#526456]">
+              Account type
+              <select
+                value={accountType}
+                onChange={(event) => setAccountType(event.target.value)}
+                className="ml-2 rounded-lg border border-[#D8DED3] bg-white px-3 py-2"
+              >
+                <option value="Student">Student</option>
+                <option value="Instructor">Instructor</option>
+              </select>
+            </label>
+            <label className="text-sm text-[#526456]">
+              Search
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, academic email, or ID" className="ml-2 rounded-lg border border-[#D8DED3] px-3 py-2 outline-none focus:border-[#2B5748]" />
+            </label>
+          </div>
+>>>>>>> Stashed changes
         </div>
 
         {loading && <div role="status" className="rounded-2xl bg-white p-8 text-center text-sm text-[#647264]">Loading {accountTypeLower}...</div>}
@@ -328,7 +365,10 @@ function StudentManagement() {
               )}
               </div>
             </div>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
           </article>
         ))}
         {!loading && accountType === "Instructor" && filteredInstructors.map((instructor) => (
@@ -347,7 +387,10 @@ function StudentManagement() {
                 </p>
               </div>
             </div>
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
           </article>
         ))}
       </section>
