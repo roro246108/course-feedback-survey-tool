@@ -1,9 +1,6 @@
 
 const pool = require('../../shared/config/db');
 
-// Approved counting rule (same as the analytics module): a response is a
-// submission with at least one rating or non-blank written answer; empty
-// submissions are not counted. Read-only, parameterised SELECT statements only.
 const ANSWERED_SUBMISSIONS = `
     answered_submissions AS (
         SELECT fs.submission_id, fs.survey_id
@@ -20,12 +17,13 @@ const ANSWERED_SUBMISSIONS = `
     )
 `;
 
-const toParam = value => (value === undefined ? null : value);
+const toParam = value =>
+    value === undefined ? null : value;
 
-// Every semester is returned (chronologically). Optional filters restrict which
-// course offerings are counted; course_offerings shows how many matched, so a
-// semester where the course was not offered can be told apart from one with no feedback.
-const getSemesterComparison = async ({ courseId, instructorId } = {}) => {
+const getSemesterComparison = async ({
+    courseId,
+    instructorId
+} = {}) => {
     const query = `
         WITH ${ANSWERED_SUBMISSIONS}
         SELECT
@@ -76,10 +74,22 @@ const getSemesterComparison = async ({ courseId, instructorId } = {}) => {
 };
 
 const EXISTS_QUERIES = {
-    course: 'SELECT EXISTS (SELECT 1 FROM courses WHERE course_id = $1) AS found',
-    instructor: `SELECT EXISTS (
-        SELECT 1 FROM users WHERE user_id = $1 AND role = 'Instructor'
-    ) AS found`
+    course: `
+        SELECT EXISTS (
+            SELECT 1
+            FROM courses
+            WHERE course_id = $1
+        ) AS found
+    `,
+
+    instructor: `
+        SELECT EXISTS (
+            SELECT 1
+            FROM users
+            WHERE user_id = $1
+              AND role = 'Instructor'
+        ) AS found
+    `
 };
 
 const entityExists = async (entity, id) => {
@@ -90,6 +100,7 @@ const entityExists = async (entity, id) => {
     }
 
     const result = await pool.query(query, [id]);
+
     return result.rows[0].found === true;
 };
 

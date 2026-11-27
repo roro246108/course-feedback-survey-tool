@@ -20,10 +20,13 @@ const studentSurveyRoutes = require("./anonymous-feedback/routes/studentSurveyRo
 
 // Authentication Routes
 const authRoutes = require("./authentication/routes/authRoutes");
+const adminUserRoutes = require("./authentication/routes/adminUserRoutes");
 
 // Survey Management Routes
 const surveyRoutes = require("./survey-management/routes/surveyRoutes");
 const surveyDashboardRoutes = require("./survey-management/routes/dashboardRoutes");
+const analyticsRoutes = require("./analytics-reporting/routes/analyticsRoutes");
+const semesterComparisonRoutes = require("./analytics-reporting/routes/semesterComparisonRoutes");
 
 const app = express();
 
@@ -47,6 +50,10 @@ app.use(
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
 app.use("/api/auth", authRoutes);
+
+// Anonymous Feedback Routes
+
+
 app.use("/api/feedback/dashboard", dashboardRoutes);
 app.use("/api/student", studentSurveyRoutes);
 app.use("/api", feedbackRoutes);
@@ -77,7 +84,8 @@ app.listen(PORT, () => {
 });
 });
 
-// Start Server
+
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

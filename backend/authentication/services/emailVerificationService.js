@@ -140,6 +140,28 @@ async function sendVerificationEmail(userId) {
   });
 }
 
+async function resendVerificationEmail(email) {
+  const normalizedEmail = email.trim().toLowerCase();
+  const user = await authModel.findUserByEmail(normalizedEmail);
+
+  if (
+    user &&
+    user.account_status === "Pending" &&
+    !user.email_verified
+  ) {
+    try {
+      await sendVerificationEmail(user.user_id);
+    } catch (error) {
+      console.error("Email verification resend failed:", error);
+      throw new Error("Unable to send a verification email right now.");
+    }
+  }
+
+  return {
+    message: "If an eligible account exists, a verification email has been sent.",
+  };
+}
+
 // Verify the token and activate the account
 async function verifyEmail(rawToken) {
   if (
@@ -231,5 +253,6 @@ async function verifyEmail(rawToken) {
 
 module.exports = {
   sendVerificationEmail,
+  resendVerificationEmail,
   verifyEmail,
 };

@@ -6,24 +6,33 @@ async function createInvitation(req, res, next) {
   res.set("Cache-Control", "no-store");
 
   try {
-    const { fullName, email, role } = req.body || {};
+    const body = req.body || {};
+    const {
+      fullName,
+      personalEmail,
+      academicEmail,
+      role,
+    } = body;
 
     // Validate required fields.
     if (
       typeof fullName !== "string" ||
-      typeof email !== "string" ||
+      typeof personalEmail !== "string" ||
+      typeof academicEmail !== "string" ||
       typeof role !== "string" ||
       !fullName.trim() ||
-      !email.trim() ||
+      !personalEmail.trim() ||
+      !academicEmail.trim() ||
       !role.trim()
     ) {
       return res.status(400).json({
-        message: "Full name, email and role are required.",
+        message: "Full name, account type, personal email, and academic email are required.",
       });
     }
 
     const normalizedName = fullName.trim();
-    const normalizedEmail = email.trim();
+    const normalizedPersonalEmail = personalEmail.trim();
+    const normalizedAcademicEmail = academicEmail.trim();
     const normalizedRole = role.trim();
 
     // Validate full name length.
@@ -38,11 +47,20 @@ async function createInvitation(req, res, next) {
 
     // Validate email format and length.
     if (
-      normalizedEmail.length > 255 ||
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+      normalizedPersonalEmail.length > 255 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedPersonalEmail)
     ) {
       return res.status(400).json({
-        message: "Please provide a valid email address.",
+        message: "Please provide a valid personal email address.",
+      });
+    }
+
+    if (
+      normalizedAcademicEmail.length > 255 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedAcademicEmail)
+    ) {
+      return res.status(400).json({
+        message: "Please provide a valid academic email address.",
       });
     }
 
@@ -56,7 +74,8 @@ async function createInvitation(req, res, next) {
     // Create the invitation.
     const result = await invitationService.createInvitation({
       fullName: normalizedName,
-      email: normalizedEmail,
+      personalEmail: normalizedPersonalEmail,
+      academicEmail: normalizedAcademicEmail,
       role: normalizedRole,
       invitedBy: req.user.userId,
       ipAddress: req.ip,
@@ -65,10 +84,22 @@ async function createInvitation(req, res, next) {
 
     return res.status(201).json(result);
   } catch (error) {
+    if (
+      error.code === "EMAIL_DELIVERY_FAILED" ||
+      error.code === "INVITATION_EMAIL_CLEANUP_FAILED" ||
+      error.code === "INVITATION_EMAIL_CONFIGURATION_ERROR"
+    ) {
+      return res.status(error.statusCode || 503).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
     // Invalid input.
     if (
       error.message === "Invalid account role." ||
-      error.message === "Please provide a valid email address." ||
+      error.message === "Please provide a valid personal email address." ||
+      error.message === "Please provide a valid academic email address." ||
       error.message ===
         "Full name must be between 2 and 150 characters."
     ) {

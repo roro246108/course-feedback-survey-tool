@@ -30,6 +30,9 @@ erDiagram
 
     USERS {
         int user_id PK
+        varchar email
+        varchar personal_email "Student or Instructor invitation delivery email"
+        varchar account_status
     }
     COURSES {
         int course_id PK
@@ -87,6 +90,8 @@ erDiagram
     ACCOUNT_INVITATIONS {
         bigint invitation_id PK
         int invited_by FK
+        varchar email "Invitation delivery address"
+        varchar academic_email "Student or Instructor login address"
     }
     AUTH_AUDIT_LOGS {
         bigint log_id PK

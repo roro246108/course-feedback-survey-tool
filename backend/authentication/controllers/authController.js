@@ -85,7 +85,9 @@ async function login(req, res, next) {
     if (
       error.message ===
         "Please verify your email before logging in." ||
-      error.message === "Your account is not active."
+      error.message === "Your account is not active." ||
+      error.message ===
+        "Your account has been deactivated. Contact an administrator."
     ) {
       return res.status(403).json({
         message: error.message,

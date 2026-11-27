@@ -66,6 +66,23 @@ function SurveyIcon() {
   );
 }
 
+function CourseIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className="h-5 w-5"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m3 8 9-4 9 4-9 4-9-4Z" />
+      <path d="M7 10v5c3.3 2.5 6.7 2.5 10 0v-5M21 9v6" />
+    </svg>
+  );
+}
+
 function SubmissionIcon() {
   return (
     <svg
@@ -121,6 +138,11 @@ function StudentNavbar() {
       label: "Surveys",
       to: "/surveys",
       icon: <SurveyIcon />,
+    },
+    {
+      label: "My Courses",
+      to: "/my-courses",
+      icon: <CourseIcon />,
     },
     {
       label: "My Submissions",
@@ -217,7 +239,7 @@ function StudentNavbar() {
               </span>
 
               <span className="block text-[10px] text-[#4B5545]">
-                {user?.role || "Student"}
+                Student ID: {user?.userId || "—"}
               </span>
             </span>
 

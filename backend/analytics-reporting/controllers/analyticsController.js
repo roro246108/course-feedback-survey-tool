@@ -1,7 +1,6 @@
 
 const analyticsService = require('../services/analyticsService');
 
-// Client errors (400 / 404) carry their own status; everything else is a 500
 class RequestError extends Error {
     constructor(status, message) {
         super(message);
@@ -9,24 +8,21 @@ class RequestError extends Error {
     }
 }
 
-// Query parameters that refer to a database record (checked for existence -> 404)
 const ENTITY_FILTERS = {
     courseId: 'course',
     semesterId: 'semester',
     instructorId: 'instructor'
 };
 
-const MAX_ID = 2147483647; // PostgreSQL integer limit
+const MAX_ID = 2147483647;
 const DEFAULT_FEEDBACK_LIMIT = 6;
 const MAX_FEEDBACK_LIMIT = 50;
 
-// Parse an optional positive whole number from the query string
 const parsePositiveInteger = (raw, name, max = MAX_ID) => {
     if (raw === undefined || raw === '') {
         return null;
     }
 
-    // Arrays (?x=1&x=2) and anything that is not plain digits are rejected
     if (typeof raw !== 'string' || !/^[1-9]\d*$/.test(raw) || Number(raw) > max) {
         throw new RequestError(
             400,
@@ -39,13 +35,13 @@ const parsePositiveInteger = (raw, name, max = MAX_ID) => {
     return Number(raw);
 };
 
-// Validate the allowed query parameters for one endpoint
 const readQuery = async (query, allowed) => {
     const filters = {};
 
     for (const name of allowed) {
         if (name === 'limit') {
-            filters.limit = parsePositiveInteger(query.limit, 'limit', MAX_FEEDBACK_LIMIT)
+            filters.limit =
+                parsePositiveInteger(query.limit, 'limit', MAX_FEEDBACK_LIMIT)
                 ?? DEFAULT_FEEDBACK_LIMIT;
         } else {
             filters[name] = parsePositiveInteger(query[name], name);
@@ -67,6 +63,24 @@ const readQuery = async (query, allowed) => {
     return filters;
 };
 
+// Never trust instructorId supplied by the frontend.
+// The authenticated user's ID is taken from authenticateToken middleware.
+const getAuthorizedFilters = async (req, allowed) => {
+    const query = { ...req.query };
+
+    if (req.user.role === 'Instructor') {
+        delete query.instructorId;
+    }
+
+    const filters = await readQuery(query, allowed);
+
+    if (req.user.role === 'Instructor') {
+        filters.instructorId = req.user.userId;
+    }
+
+    return filters;
+};
+
 const sendError = (res, error, errorMessage) => {
     if (error instanceof RequestError) {
         return res.status(error.status).json({
@@ -83,24 +97,22 @@ const sendError = (res, error, errorMessage) => {
     });
 };
 
-// Helper to handle analytics requests
 const handleRequest = (serviceMethod, errorMessage, allowedQuery = []) => {
     return async (req, res) => {
         try {
-            const filters = await readQuery(req.query, allowedQuery);
+            const filters = await getAuthorizedFilters(req, allowedQuery);
             const data = await serviceMethod(filters);
 
-            res.status(200).json({
+            return res.status(200).json({
                 success: true,
                 data
             });
 
         } catch (error) {
-            sendError(res, error, errorMessage);
+            return sendError(res, error, errorMessage);
         }
     };
 };
-
 
 // 1. Overall Analytics
 const getOverview = handleRequest(
@@ -108,20 +120,17 @@ const getOverview = handleRequest(
     'Failed to fetch analytics overview'
 );
 
-
 // 2. Feedback Trends
 const getFeedbackTrends = handleRequest(
     analyticsService.getFeedbackTrends,
     'Failed to fetch feedback trends'
 );
 
-
 // 3. Semester Comparison
 const getSemesterComparison = handleRequest(
     analyticsService.getSemesterComparison,
     'Failed to fetch semester comparison'
 );
-
 
 // 4. Course Performance
 const getCoursePerformance = handleRequest(
@@ -130,7 +139,6 @@ const getCoursePerformance = handleRequest(
     ['semesterId', 'instructorId']
 );
 
-
 // 5. Instructor Performance
 const getInstructorPerformance = handleRequest(
     analyticsService.getInstructorPerformance,
@@ -138,26 +146,29 @@ const getInstructorPerformance = handleRequest(
     ['semesterId', 'courseId']
 );
 
-
-// 6. Recent Feedback (returns an extra "meta" object for the privacy rule)
+// 6. Recent Feedback
 const getRecentFeedback = async (req, res) => {
     const errorMessage = 'Failed to fetch recent feedback';
 
     try {
-        const filters = await readQuery(req.query, ['courseId', 'semesterId', 'limit']);
-        const { items, meta } = await analyticsService.getRecentFeedback(filters);
+        const filters = await getAuthorizedFilters(
+            req,
+            ['courseId', 'semesterId', 'limit']
+        );
 
-        res.status(200).json({
+        const { items, meta } =
+            await analyticsService.getRecentFeedback(filters);
+
+        return res.status(200).json({
             success: true,
             data: items,
             meta
         });
 
     } catch (error) {
-        sendError(res, error, errorMessage);
+        return sendError(res, error, errorMessage);
     }
 };
-
 
 // 7. Rating Distribution
 const getRatingDistribution = handleRequest(
@@ -166,14 +177,12 @@ const getRatingDistribution = handleRequest(
     ['courseId', 'semesterId', 'instructorId']
 );
 
-
 // 8. Response Rates
 const getResponseRates = handleRequest(
     analyticsService.getResponseRates,
     'Failed to fetch response rates',
     ['courseId', 'semesterId', 'instructorId']
 );
-
 
 module.exports = {
     getOverview,

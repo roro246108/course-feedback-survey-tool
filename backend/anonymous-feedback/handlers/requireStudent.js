@@ -1,5 +1,5 @@
 
-const authenticateToken = require("../../middleware/authenticateToken.js");
+const authenticateToken = require("../../shared/middleware/authenticateToken.js");
 
 function requireStudent(req, res, next) {
   return authenticateToken(req, res, (error) => {

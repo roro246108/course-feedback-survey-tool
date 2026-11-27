@@ -59,7 +59,7 @@ function AcceptInvitation() {
       }
 
       setSuccess(
-        "Your account has been created successfully. You can now sign in."
+        data.message || "Your account has been created successfully."
       );
 
       setPassword("");

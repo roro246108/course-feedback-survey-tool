@@ -31,6 +31,31 @@ async function verifyEmail(req, res, next) {
   }
 }
 
+async function resendVerificationEmail(req, res, next) {
+  const { email } = req.body || {};
+  if (
+    typeof email !== "string" ||
+    email.trim().length > 255 ||
+    !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  ) {
+    return res.status(400).json({
+      message: "Please provide a valid email address.",
+    });
+  }
+
+  try {
+    const result = await emailVerificationService.resendVerificationEmail(email);
+    res.set("Cache-Control", "no-store");
+    return res.status(200).json(result);
+  } catch (error) {
+    if (error.message === "Unable to send a verification email right now.") {
+      return res.status(503).json({ message: error.message });
+    }
+    return next(error);
+  }
+}
+
 module.exports = {
   verifyEmail,
+  resendVerificationEmail,
 };

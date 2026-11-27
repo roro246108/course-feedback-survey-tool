@@ -1,12 +1,12 @@
 
-const semesterComparisonModel = require('../../analytics-reporting/models/semesterComparisonModel');
+const semesterComparisonModel = require('../models/semesterComparisonModel');
 
-// PostgreSQL returns COUNT/SUM/ROUND results as strings; convert them to numbers
 const toNumberOrNull = value =>
     value === null || value === undefined ? null : Number(value);
 
 const getSemesterComparison = async (filters = {}) => {
-    const data = await semesterComparisonModel.getSemesterComparison(filters);
+    const data =
+        await semesterComparisonModel.getSemesterComparison(filters);
 
     return data.map(item => ({
         semester_id: item.semester_id,
@@ -20,7 +20,8 @@ const getSemesterComparison = async (filters = {}) => {
     }));
 };
 
-const entityExists = (entity, id) => semesterComparisonModel.entityExists(entity, id);
+const entityExists = (entity, id) =>
+    semesterComparisonModel.entityExists(entity, id);
 
 module.exports = {
     getSemesterComparison,

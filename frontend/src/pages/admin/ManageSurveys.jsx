@@ -8,7 +8,7 @@ import {
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
-
+import { useAuth } from '../../context/AuthContext';
 import {
   ClipboardList,
   Hourglass,
@@ -329,6 +329,7 @@ function ManageSurveys() {
   const location = useLocation();
   const detailsRequest = useRef(null);
   const actionLock = useRef(false);
+  const { apiFetch } = useAuth();
 
   // Surveys Data
   const [surveys, setSurveys] = useState([]);
@@ -365,14 +366,17 @@ function ManageSurveys() {
   // FETCH SURVEYS
   // ============================================
 
-  const fetchSurveys = useCallback(async () => {
+  const fetchSurveys = useCallback(async (signal) => {
 
     setLoading(true);
     setError('');
 
     try {
 
-      const data = await getSurveys();
+      // Fetch surveys
+const data = await getSurveys({ signal }, apiFetch);
+
+      if (signal?.aborted) return false;
 
       if (!Array.isArray(data)) {
         throw new Error('Invalid surveys data received from server.');
@@ -383,20 +387,25 @@ function ManageSurveys() {
 
     } catch (err) {
 
+      if (err.name === 'AbortError' || signal?.aborted) return false;
+
       setError(err.message || 'Unable to load surveys.');
       return false;
 
     } finally {
 
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
 
     }
 
-  }, []);
+  }, [apiFetch]);
 
 
   useEffect(() => {
-    fetchSurveys();
+    const controller = new AbortController();
+    fetchSurveys(controller.signal);
+
+    return () => controller.abort();
   }, [fetchSurveys]);
 
   useEffect(() => {
@@ -623,9 +632,12 @@ function ManageSurveys() {
 
     try {
 
-      const data = await getSurveyById(surveyId, {
-        signal: controller.signal
-      });
+      // View survey details
+const data = await getSurveyById(
+  surveyId,
+  { signal: controller.signal },
+  apiFetch
+);
 
       if (Number(data.survey_id) !== Number(surveyId)) {
         throw new Error('The server returned a different survey.');
@@ -708,7 +720,8 @@ function ManageSurveys() {
     const label = nextStatus === 'Published' ? 'Publishing' : 'Closing';
 
     return runSurveyAction(survey, label, () =>
-      changeSurveyStatus(survey.survey_id, nextStatus)
+      // Change survey status
+changeSurveyStatus(survey.survey_id, nextStatus, apiFetch)
     );
   };
 
@@ -722,7 +735,7 @@ function ManageSurveys() {
     if (!confirmed) return;
 
     return runSurveyAction(survey, 'Deleting', () =>
-      deleteSurvey(survey.survey_id)
+      deleteSurvey(survey.survey_id, apiFetch)
     );
   };
 

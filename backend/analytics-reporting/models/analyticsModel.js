@@ -1,14 +1,7 @@
 
 const pool = require('../../shared/config/db');
 
-// ---------------------------------------------------------------------------
-// Counting rule (approved):
-// A "response" is a feedback submission that contains at least one meaningful
-// answer: a rating, or a written answer that is not blank. Each submission is
-// counted once, however many answers it contains. Empty submissions (no answers)
-// are never counted.
-// All queries below are read-only SELECT statements with parameterised values.
-// ---------------------------------------------------------------------------
+
 const ANSWERED_SUBMISSIONS = `
     answered_submissions AS (
         SELECT fs.submission_id, fs.survey_id, fs.submitted_at
@@ -25,45 +18,77 @@ const ANSWERED_SUBMISSIONS = `
     )
 `;
 
-// Optional filter values must be null (not undefined) for the "$n::int IS NULL" checks
-const toParam = value => (value === undefined ? null : value);
-
+const toParam = value => value === undefined ? null : value;
 
 // 1. Overall Analytics
-const getOverview = async () => {
+const getOverview = async ({ instructorId } = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS}
         SELECT
-            (SELECT COUNT(*)
-             FROM answered_submissions) AS total_submissions,
+            (
+                SELECT COUNT(DISTINCT a.submission_id)
+                FROM answered_submissions a
+                INNER JOIN surveys s ON s.survey_id = a.survey_id
+                INNER JOIN course_instructors ci
+                    ON ci.course_instructor_id = s.course_instructor_id
+                WHERE ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS total_submissions,
 
-            (SELECT ROUND(AVG(rating_value), 2)
-             FROM feedback_answers
-             WHERE rating_value IS NOT NULL) AS average_rating,
+            (
+                SELECT ROUND(AVG(fa.rating_value), 2)
+                FROM feedback_answers fa
+                INNER JOIN feedback_submissions fs
+                    ON fs.submission_id = fa.submission_id
+                INNER JOIN surveys s ON s.survey_id = fs.survey_id
+                INNER JOIN course_instructors ci
+                    ON ci.course_instructor_id = s.course_instructor_id
+                WHERE fa.rating_value IS NOT NULL
+                  AND ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS average_rating,
 
-            (SELECT COUNT(*)
-             FROM feedback_answers
-             WHERE rating_value IS NOT NULL) AS total_rating_answers,
+            (
+                SELECT COUNT(*)
+                FROM feedback_answers fa
+                INNER JOIN feedback_submissions fs
+                    ON fs.submission_id = fa.submission_id
+                INNER JOIN surveys s ON s.survey_id = fs.survey_id
+                INNER JOIN course_instructors ci
+                    ON ci.course_instructor_id = s.course_instructor_id
+                WHERE fa.rating_value IS NOT NULL
+                  AND ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS total_rating_answers,
 
-            (SELECT COUNT(*)
-             FROM feedback_answers
-             WHERE NULLIF(TRIM(text_answer), '') IS NOT NULL) AS total_text_answers,
+            (
+                SELECT COUNT(*)
+                FROM feedback_answers fa
+                INNER JOIN feedback_submissions fs
+                    ON fs.submission_id = fa.submission_id
+                INNER JOIN surveys s ON s.survey_id = fs.survey_id
+                INNER JOIN course_instructors ci
+                    ON ci.course_instructor_id = s.course_instructor_id
+                WHERE NULLIF(TRIM(fa.text_answer), '') IS NOT NULL
+                  AND ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS total_text_answers,
 
-            (SELECT COUNT(*)
-             FROM courses) AS total_courses,
+            (
+                SELECT COUNT(DISTINCT ci.course_id)
+                FROM course_instructors ci
+                WHERE ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS total_courses,
 
-            (SELECT COUNT(DISTINCT instructor_id)
-             FROM course_instructors) AS total_instructors
-    `);
+            (
+                SELECT COUNT(DISTINCT ci.instructor_id)
+                FROM course_instructors ci
+                WHERE ($1::int IS NULL OR ci.instructor_id = $1)
+            ) AS total_instructors
+    `, [toParam(instructorId)]);
 
     return result.rows[0];
 };
 
 
-// 2. Feedback Trends - Last 7 days, one row per day (days without responses = 0).
-// Dates are returned as plain 'YYYY-MM-DD' text so no timezone conversion happens.
-// "Today" is the database's current date, the same clock that stores submitted_at.
-const getFeedbackTrends = async () => {
+// 2. Feedback Trends - Last 7 days
+const getFeedbackTrends = async ({ instructorId } = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS},
         days AS (
@@ -80,16 +105,23 @@ const getFeedbackTrends = async () => {
         LEFT JOIN answered_submissions a
             ON a.submitted_at >= d.day
            AND a.submitted_at < d.day + 1
+        LEFT JOIN surveys s
+            ON s.survey_id = a.survey_id
+        LEFT JOIN course_instructors ci
+            ON ci.course_instructor_id = s.course_instructor_id
+            AND ($1::int IS NULL OR ci.instructor_id = $1)
+        WHERE $1::int IS NULL
+           OR ci.course_instructor_id IS NOT NULL
         GROUP BY d.day
         ORDER BY d.day ASC
-    `);
+    `, [toParam(instructorId)]);
 
     return result.rows;
 };
 
 
-// 3. Semester Comparison (chronological order)
-const getSemesterComparison = async () => {
+// 3. Semester Comparison
+const getSemesterComparison = async ({ instructorId } = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS}
         SELECT
@@ -103,6 +135,7 @@ const getSemesterComparison = async () => {
 
         LEFT JOIN course_instructors ci
             ON ci.semester_id = sem.semester_id
+            AND ($1::int IS NULL OR ci.instructor_id = $1)
 
         LEFT JOIN surveys s
             ON s.course_instructor_id = ci.course_instructor_id
@@ -121,14 +154,17 @@ const getSemesterComparison = async () => {
             sem.start_date
 
         ORDER BY sem.start_date ASC, sem.semester_id ASC
-    `);
+    `, [toParam(instructorId)]);
 
     return result.rows;
 };
 
 
-// 4. Course Performance (optional filters: semesterId, instructorId)
-const getCoursePerformance = async ({ semesterId, instructorId } = {}) => {
+// 4. Course Performance
+const getCoursePerformance = async ({
+    semesterId,
+    instructorId
+} = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS}
         SELECT
@@ -156,10 +192,10 @@ const getCoursePerformance = async ({ semesterId, instructorId } = {}) => {
             ON fa.submission_id = a.submission_id
             AND fa.rating_value IS NOT NULL
 
-        -- Without filters every course is listed; with filters only courses
-        -- that have a matching offering are listed.
-        WHERE ($1::int IS NULL AND $2::int IS NULL)
-           OR ci.course_instructor_id IS NOT NULL
+        WHERE (
+            ($1::int IS NULL AND $2::int IS NULL)
+            OR ci.course_instructor_id IS NOT NULL
+        )
 
         GROUP BY
             c.course_id,
@@ -173,8 +209,12 @@ const getCoursePerformance = async ({ semesterId, instructorId } = {}) => {
 };
 
 
-// 5. Instructor Performance (optional filters: semesterId, courseId)
-const getInstructorPerformance = async ({ semesterId, courseId } = {}) => {
+// 5. Instructor Performance
+const getInstructorPerformance = async ({
+    semesterId,
+    courseId,
+    instructorId
+} = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS}
         SELECT
@@ -202,20 +242,30 @@ const getInstructorPerformance = async ({ semesterId, courseId } = {}) => {
 
         WHERE ($1::int IS NULL OR ci.semester_id = $1)
           AND ($2::int IS NULL OR ci.course_id = $2)
+          AND ($3::int IS NULL OR ci.instructor_id = $3)
 
         GROUP BY
             u.user_id,
             u.full_name
 
         ORDER BY average_rating DESC NULLS LAST, u.full_name ASC
-    `, [toParam(semesterId), toParam(courseId)]);
+    `, [
+        toParam(semesterId),
+        toParam(courseId),
+        toParam(instructorId)
+    ]);
 
     return result.rows;
 };
 
 
-// 6. Recent Anonymous Feedback (optional filters: courseId, semesterId; limit)
-const getRecentFeedback = async ({ courseId, semesterId, limit }) => {
+// 6. Recent Anonymous Feedback
+const getRecentFeedback = async ({
+    courseId,
+    semesterId,
+    instructorId,
+    limit
+}) => {
     const result = await pool.query(`
         SELECT
             fa.answer_id,
@@ -245,30 +295,48 @@ const getRecentFeedback = async ({ courseId, semesterId, limit }) => {
         WHERE NULLIF(TRIM(fa.text_answer), '') IS NOT NULL
           AND ($1::int IS NULL OR ci.course_id = $1)
           AND ($2::int IS NULL OR ci.semester_id = $2)
+          AND ($3::int IS NULL OR ci.instructor_id = $3)
 
         ORDER BY fs.submitted_at DESC NULLS LAST, fa.answer_id DESC
 
-        LIMIT $3
-    `, [toParam(courseId), toParam(semesterId), limit]);
+        LIMIT $4
+    `, [
+        toParam(courseId),
+        toParam(semesterId),
+        toParam(instructorId),
+        limit
+    ]);
 
     return result.rows;
 };
 
 
-// Number of answered submissions in a course and/or semester group
-// (used for the small-group comment privacy rule)
-const countAnsweredSubmissions = async ({ courseId, semesterId } = {}) => {
+// Count answered submissions for the comment privacy rule
+const countAnsweredSubmissions = async ({
+    courseId,
+    semesterId,
+    instructorId
+} = {}) => {
     const result = await pool.query(`
         WITH ${ANSWERED_SUBMISSIONS}
-        SELECT COUNT(*) AS total
+        SELECT COUNT(DISTINCT a.submission_id) AS total
+
         FROM answered_submissions a
+
         INNER JOIN surveys s
             ON s.survey_id = a.survey_id
+
         INNER JOIN course_instructors ci
             ON ci.course_instructor_id = s.course_instructor_id
+
         WHERE ($1::int IS NULL OR ci.course_id = $1)
           AND ($2::int IS NULL OR ci.semester_id = $2)
-    `, [toParam(courseId), toParam(semesterId)]);
+          AND ($3::int IS NULL OR ci.instructor_id = $3)
+    `, [
+        toParam(courseId),
+        toParam(semesterId),
+        toParam(instructorId)
+    ]);
 
     return Number(result.rows[0].total);
 };
@@ -323,14 +391,18 @@ const getResponseRates = async ({ courseId, semesterId, instructorId } = {}) => 
             sem.semester_name,
             sem.academic_year,
 
-            (SELECT COUNT(*)
-             FROM enrollments e
-             WHERE e.course_id = ci.course_id
-               AND e.semester_id = ci.semester_id) AS enrolled_students,
+            (
+                SELECT COUNT(*)
+                FROM enrollments e
+                WHERE e.course_id = ci.course_id
+                  AND e.semester_id = ci.semester_id
+            ) AS enrolled_students,
 
-            (SELECT COUNT(*)
-             FROM participation p
-             WHERE p.survey_id = s.survey_id) AS participated_students
+            (
+                SELECT COUNT(*)
+                FROM participation p
+                WHERE p.survey_id = s.survey_id
+            ) AS participated_students
 
         FROM surveys s
 
@@ -355,13 +427,24 @@ const getResponseRates = async ({ courseId, semesterId, instructorId } = {}) => 
 };
 
 
-// Existence checks for filter values (fixed table/column per entity, id is a parameter)
+// Existence checks for filter values
 const EXISTS_QUERIES = {
-    course: 'SELECT EXISTS (SELECT 1 FROM courses WHERE course_id = $1) AS found',
-    semester: 'SELECT EXISTS (SELECT 1 FROM semesters WHERE semester_id = $1) AS found',
-    instructor: `SELECT EXISTS (
-        SELECT 1 FROM users WHERE user_id = $1 AND role = 'Instructor'
-    ) AS found`
+    course: `
+        SELECT EXISTS (
+            SELECT 1 FROM courses WHERE course_id = $1
+        ) AS found
+    `,
+    semester: `
+        SELECT EXISTS (
+            SELECT 1 FROM semesters WHERE semester_id = $1
+        ) AS found
+    `,
+    instructor: `
+        SELECT EXISTS (
+            SELECT 1 FROM users
+            WHERE user_id = $1 AND role = 'Instructor'
+        ) AS found
+    `
 };
 
 const entityExists = async (entity, id) => {
@@ -372,6 +455,7 @@ const entityExists = async (entity, id) => {
     }
 
     const result = await pool.query(query, [id]);
+
     return result.rows[0].found === true;
 };
 

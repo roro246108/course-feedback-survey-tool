@@ -30,7 +30,11 @@ export default function ProtectedRoute({ allowedRoles }) {
 
   // Check whether the user's role is allowed
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    const roleHome = { Student: "/", Instructor: "/instructor", Admin: "/admin" };
+    const roleHome = {
+      Student: "/",
+      Instructor: "/instructor/reports",
+      Admin: "/admin",
+    };
     return <Navigate to={roleHome[user.role] || "/unauthorized"} replace state={{ from: location }} />;
   }
 

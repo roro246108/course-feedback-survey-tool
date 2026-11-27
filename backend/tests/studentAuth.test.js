@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
-const authMiddlewarePath = require.resolve("../middleware/authenticateToken.js");
+const authMiddlewarePath = require.resolve("../shared/middleware/authenticateToken.js");
 const previousAuthModule = require.cache[authMiddlewarePath];
 let authenticatedUser = null;
 
@@ -16,6 +16,7 @@ require.cache[authMiddlewarePath] = {
 };
 
 const requireStudent = require("../anonymous-feedback/handlers/requireStudent");
+const authorizeRole = require("../shared/middleware/authorizeRole");
 
 if (previousAuthModule) {
   require.cache[authMiddlewarePath] = previousAuthModule;
@@ -72,4 +73,22 @@ test("student guard rejects a request with no authenticated user", () => {
   });
 
   assert.equal(res.statusCode, 401);
+});
+
+test("Admin-only authorization rejects Students and Instructors but permits Admins", () => {
+  const adminOnly = authorizeRole("Admin");
+
+  for (const role of ["Student", "Instructor"]) {
+    const res = createResponse();
+    adminOnly({ user: { role } }, res, () => {
+      assert.fail(`${role} must not reach an Admin-only API`);
+    });
+    assert.equal(res.statusCode, 403);
+  }
+
+  let nextCalled = false;
+  adminOnly({ user: { role: "Admin" } }, createResponse(), () => {
+    nextCalled = true;
+  });
+  assert.equal(nextCalled, true);
 });

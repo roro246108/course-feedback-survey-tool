@@ -180,17 +180,32 @@ export function AuthProvider({ children }) {
   // Send authenticated requests to the backend.
   const apiFetch = useCallback(
     async (url, options = {}) => {
-      const send = (token) => {
-        const headers = new Headers(options.headers || {});
-        if (token) headers.set("Authorization", `Bearer ${token}`);
-        return fetch(url, { ...options, headers, credentials: "include" });
+      const method = (options.method || "GET").toUpperCase();
+      const headers = new Headers(options.headers || {});
+
+      if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+        headers.set("X-CSRF-Token", await getCsrfToken());
+      }
+
+      const send = (token, sourceHeaders = headers) => {
+        const requestHeaders = new Headers(sourceHeaders);
+        if (token) requestHeaders.set("Authorization", `Bearer ${token}`);
+        return fetch(url, {
+          ...options,
+          method,
+          headers: requestHeaders,
+          credentials: "include",
+        });
       };
 
       let response = await send(accessToken);
       if (response.status === 401) {
         try {
           const refreshed = await refreshSession();
-          response = await send(refreshed.accessToken);
+          if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+            headers.set("X-CSRF-Token", await getCsrfToken());
+          }
+          response = await send(refreshed.accessToken, headers);
         } catch {
           setUser(null);
           setAccessToken(null);
@@ -198,7 +213,7 @@ export function AuthProvider({ children }) {
       }
       return response;
     },
-    [accessToken, refreshSession]
+    [accessToken, getCsrfToken, refreshSession]
   );
 
   // Make public auth requests with the same CSRF and cookie policy.

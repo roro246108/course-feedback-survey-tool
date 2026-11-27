@@ -82,9 +82,28 @@ async function acceptInvitation({
       throw new Error("Invalid or expired invitation.");
     }
 
-    // Check that the email does not already belong to an account.
-    const existingUser = await authModel.findUserByEmail(
-      invitation.email,
+    if (!["Student", "Instructor"].includes(invitation.role)) {
+      throw new Error("Invalid or expired invitation.");
+    }
+
+    const accountEmail = (
+      invitation.academic_email || invitation.email
+    ).trim().toLowerCase();
+    const personalEmail = invitation.email.trim().toLowerCase();
+    const emailAddresses = [...new Set(
+      [accountEmail, personalEmail].filter(Boolean)
+    )].sort();
+
+    for (const address of emailAddresses) {
+      await client.query(
+        `SELECT pg_advisory_xact_lock(hashtextextended($1, 0));`,
+        [address]
+      );
+    }
+
+    // Prevent login or personal addresses from being reused across accounts.
+    const existingUser = await authModel.findUserByEmailAddresses(
+      emailAddresses,
       client
     );
 
@@ -92,18 +111,18 @@ async function acceptInvitation({
       throw new Error("An account already exists for this email address.");
     }
 
-    // Create the account in Pending status.
+    // Create and activate the account within the invitation transaction.
     const newUser = await authModel.createUser(
       {
         fullName: invitation.full_name,
-        email: invitation.email,
+        email: accountEmail,
+        personalEmail,
         passwordHash,
         role: invitation.role,
       },
       client
     );
 
-    // The invitation link confirms ownership of the invited email.
     const activated = await authModel.activateVerifiedUser(
       newUser.user_id,
       client
@@ -149,11 +168,13 @@ async function acceptInvitation({
     transactionStarted = false;
 
     return {
-      message: "Your account has been created successfully.",
+      message:
+        "Your account has been created and activated. You can now sign in with your academic email.",
       user: {
         userId: newUser.user_id,
         fullName: newUser.full_name,
         email: newUser.email,
+        personalEmail: newUser.personal_email,
         role: newUser.role,
       },
     };

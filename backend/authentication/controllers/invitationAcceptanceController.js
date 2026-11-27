@@ -55,6 +55,13 @@ async function acceptInvitation(req, res, next) {
       });
     }
 
+    if (error.code === "ACADEMIC_VERIFICATION_EMAIL_FAILED") {
+      return res.status(503).json({
+        message: error.message,
+        accountCreated: true,
+      });
+    }
+
     // Invalid password.
     if (error.message.startsWith("Password must be")) {
       return res.status(400).json({

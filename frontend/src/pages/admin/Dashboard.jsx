@@ -8,10 +8,12 @@ import RecentSurveysTable from '../../components/dashboard/RecentSurveysTable';
 import QuickActions from '../../components/dashboard/QuickActions';
 
 import {
+  Activity,
+  BookOpen,
   ClipboardList,
-  Users,
   GraduationCap,
-  ChartNoAxesColumnIncreasing
+  MessageSquareText,
+  Users
 } from 'lucide-react';
 
 function Dashboard() {
@@ -26,32 +28,46 @@ function Dashboard() {
 
   const statCards = [
     {
-      title: 'Total Surveys',
-      value: stats?.total_surveys,
-      icon: ClipboardList,
+      title: 'Total Students',
+      value: stats?.total_students,
+      icon: Users,
       background: 'bg-[#E1E9E0]',
       iconColor: 'text-[#315B45]'
     },
     {
-      title: 'Published Surveys',
-      value: stats?.published_surveys,
-      icon: Users,
+      title: 'Total Instructors',
+      value: stats?.total_instructors,
+      icon: GraduationCap,
       background: 'bg-[#E8E8D5]',
       iconColor: 'text-[#66733D]'
     },
     {
-      title: 'Total Responses',
-      value: stats?.total_responses,
-      icon: GraduationCap,
+      title: 'Total Courses',
+      value: stats?.total_courses,
+      icon: BookOpen,
+      background: 'bg-[#F3E7CF]',
+      iconColor: 'text-[#88703D]'
+    },
+    {
+      title: 'Total Surveys',
+      value: stats?.total_surveys,
+      icon: ClipboardList,
       background: 'bg-[#DCE7F2]',
       iconColor: 'text-[#315B62]'
     },
     {
-      title: 'Total Courses',
-      value: stats?.total_courses,
-      icon: ChartNoAxesColumnIncreasing,
-      background: 'bg-[#F3E7CF]',
+      title: 'Active Surveys',
+      value: stats?.active_surveys,
+      icon: Activity,
+      background: 'bg-[#F0E7D5]',
       iconColor: 'text-[#88703D]'
+    },
+    {
+      title: 'Total Responses',
+      value: stats?.total_responses,
+      icon: MessageSquareText,
+      background: 'bg-[#E8E8D5]',
+      iconColor: 'text-[#66733D]'
     }
   ];
 
@@ -98,7 +114,7 @@ function Dashboard() {
         <div className="relative z-10 space-y-7">
 
           {/* Statistics Cards */}
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
 
             {statCards.map((card) => {
               const Icon = card.icon;

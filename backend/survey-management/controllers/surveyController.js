@@ -118,9 +118,11 @@ const createSurvey = async (req, res) => {
                 ? req.body
                 : {};
 
+        // Use the authenticated Admin's ID.
+        // Never trust created_by sent by the frontend.
         const surveyData = {
             ...requestBody,
-            created_by: 1
+            created_by: req.user.userId
         };
 
         const newSurvey = await surveyHandler.createSurvey(surveyData);
@@ -168,6 +170,7 @@ const updateSurvey = async (req, res) => {
             const questions = req.body && Array.isArray(req.body.questions)
                 ? req.body.questions
                 : [];
+
             console.info(
                 '[survey-question-debug] controller received IDs:',
                 questions.map(question => question && question.question_id)
@@ -222,6 +225,11 @@ const updateSurvey = async (req, res) => {
         });
     }
 };
+
+
+// ============================================
+// CHANGE SURVEY STATUS
+// ============================================
 
 const changeSurveyStatus = async (req, res) => {
     try {
@@ -279,6 +287,11 @@ const changeSurveyStatus = async (req, res) => {
     }
 };
 
+
+// ============================================
+// DELETE SURVEY
+// ============================================
+
 const deleteSurvey = async (req, res) => {
     try {
         const surveyId = Number(req.params.id);
@@ -334,6 +347,11 @@ const deleteSurvey = async (req, res) => {
     }
 };
 
+
+// ============================================
+// GET SURVEY QUESTIONS
+// ============================================
+
 const getSurveyQuestions = async (req, res) => {
     try {
         const survey = await surveyHandler.getSurveyQuestions(req.params.id);
@@ -349,10 +367,16 @@ const getSurveyQuestions = async (req, res) => {
             success: true,
             data: survey
         });
+
     } catch (error) {
         return sendQuestionError(res, error, 'fetch survey questions');
     }
 };
+
+
+// ============================================
+// ADD QUESTION
+// ============================================
 
 const addQuestion = async (req, res) => {
     try {
@@ -373,10 +397,16 @@ const addQuestion = async (req, res) => {
             message: 'Question added successfully',
             data: question
         });
+
     } catch (error) {
         return sendQuestionError(res, error, 'add question');
     }
 };
+
+
+// ============================================
+// UPDATE QUESTION
+// ============================================
 
 const updateQuestion = async (req, res) => {
     try {
@@ -398,10 +428,16 @@ const updateQuestion = async (req, res) => {
             message: 'Question updated successfully',
             data: question
         });
+
     } catch (error) {
         return sendQuestionError(res, error, 'update question');
     }
 };
+
+
+// ============================================
+// DELETE QUESTION
+// ============================================
 
 const deleteQuestion = async (req, res) => {
     try {
@@ -422,10 +458,16 @@ const deleteQuestion = async (req, res) => {
             message: 'Question deleted successfully',
             data: question
         });
+
     } catch (error) {
         return sendQuestionError(res, error, 'delete question');
     }
 };
+
+
+// ============================================
+// REORDER QUESTIONS
+// ============================================
 
 const reorderQuestions = async (req, res) => {
     try {
@@ -446,6 +488,7 @@ const reorderQuestions = async (req, res) => {
             message: 'Questions reordered successfully',
             data: questions
         });
+
     } catch (error) {
         return sendQuestionError(res, error, 'reorder questions');
     }

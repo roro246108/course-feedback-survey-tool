@@ -1,17 +1,15 @@
 
 const analyticsModel = require('../models/analyticsModel');
 
-// Approved privacy rule: written comments are hidden when the selected
-// course/semester group has fewer than this many answered submissions.
+// Comments are hidden when the group has fewer than 3 answered submissions.
 const MIN_RESPONSES_FOR_COMMENTS = 3;
 
-// PostgreSQL returns COUNT/SUM/ROUND results as strings; convert them here
 const toNumberOrNull = value =>
     value === null || value === undefined ? null : Number(value);
 
 // 1. Overall Analytics
-const getOverview = async () => {
-    const data = await analyticsModel.getOverview();
+const getOverview = async (filters = {}) => {
+    const data = await analyticsModel.getOverview(filters);
 
     return {
         totalSubmissions: Number(data.total_submissions),
@@ -23,9 +21,9 @@ const getOverview = async () => {
     };
 };
 
-// 2. Feedback Trends (always 7 rows, 'YYYY-MM-DD' dates)
-const getFeedbackTrends = async () => {
-    const data = await analyticsModel.getFeedbackTrends();
+// 2. Feedback Trends
+const getFeedbackTrends = async (filters = {}) => {
+    const data = await analyticsModel.getFeedbackTrends(filters);
 
     return data.map(item => ({
         submission_date: item.submission_date,
@@ -34,8 +32,8 @@ const getFeedbackTrends = async () => {
 };
 
 // 3. Semester Comparison
-const getSemesterComparison = async () => {
-    const data = await analyticsModel.getSemesterComparison();
+const getSemesterComparison = async (filters = {}) => {
+    const data = await analyticsModel.getSemesterComparison(filters);
 
     return data.map(item => ({
         semester_id: item.semester_id,
@@ -74,12 +72,21 @@ const getInstructorPerformance = async (filters = {}) => {
     }));
 };
 
-// 6. Recent Feedback (with the small-group privacy rule)
-const getRecentFeedback = async ({ courseId = null, semesterId = null, limit = 6 } = {}) => {
-    const groupResponses = await analyticsModel.countAnsweredSubmissions({
+// 6. Recent Anonymous Feedback
+const getRecentFeedback = async ({
+    courseId = null,
+    semesterId = null,
+    instructorId = null,
+    limit = 6
+} = {}) => {
+    const filters = {
         courseId,
-        semesterId
-    });
+        semesterId,
+        instructorId
+    };
+
+    const groupResponses =
+        await analyticsModel.countAnsweredSubmissions(filters);
 
     if (groupResponses < MIN_RESPONSES_FOR_COMMENTS) {
         return {
@@ -93,7 +100,10 @@ const getRecentFeedback = async ({ courseId = null, semesterId = null, limit = 6
         };
     }
 
-    const data = await analyticsModel.getRecentFeedback({ courseId, semesterId, limit });
+    const data = await analyticsModel.getRecentFeedback({
+        ...filters,
+        limit
+    });
 
     return {
         items: data.map(item => ({
@@ -122,7 +132,7 @@ const getRatingDistribution = async (filters = {}) => {
     }));
 };
 
-// 8. Response Rates (counts only)
+// 8. Response Rates
 const getResponseRates = async (filters = {}) => {
     const data = await analyticsModel.getResponseRates(filters);
 
@@ -142,7 +152,6 @@ const getResponseRates = async (filters = {}) => {
             academic_year: item.academic_year,
             enrolled_students: enrolled,
             participated_students: participated,
-            // Percentage with one decimal; null when nobody is enrolled
             response_rate: enrolled > 0
                 ? Math.round((participated / enrolled) * 1000) / 10
                 : null
@@ -150,8 +159,9 @@ const getResponseRates = async (filters = {}) => {
     });
 };
 
-// Used by the controller to return 404 for filter ids that do not exist
-const entityExists = (entity, id) => analyticsModel.entityExists(entity, id);
+// Used by the controller to validate filter IDs.
+const entityExists = (entity, id) =>
+    analyticsModel.entityExists(entity, id);
 
 module.exports = {
     getOverview,

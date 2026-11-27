@@ -1,6 +1,8 @@
 
 const express = require('express');
 const router = express.Router();
+const authenticateToken = require('../../shared/middleware/authenticateToken');
+const authorizeRole = require('../../shared/middleware/authorizeRole');
 
 const {
     getOverview,
@@ -12,6 +14,8 @@ const {
     getRatingDistribution,
     getResponseRates
 } = require('../controllers/analyticsController');
+
+router.use(authenticateToken, authorizeRole('Admin', 'Instructor'));
 
 // Overall Analytics
 router.get('/overview', getOverview);
