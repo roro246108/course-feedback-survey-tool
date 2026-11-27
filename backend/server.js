@@ -38,6 +38,7 @@ const FRONTEND_URL =
 // Security Middleware
 app.use(helmet());
 
+// CORS Configuration
 app.use(
   cors({
     origin: FRONTEND_URL,
@@ -48,32 +49,24 @@ app.use(
 // Request Parsing
 app.use(express.json({ limit: "10kb" }));
 app.use(cookieParser());
-
-// Authentication Routes
 app.use("/api/auth", authRoutes);
-<<<<<<< Updated upstream
 
 // Anonymous Feedback Routes
-=======
-app.use("/api/admin", adminUserRoutes);
->>>>>>> Stashed changes
+
+
 app.use("/api/feedback/dashboard", dashboardRoutes);
 app.use("/api/student", studentSurveyRoutes);
 app.use("/api", feedbackRoutes);
-
-// Survey Management Routes
 app.use("/api/dashboard", surveyDashboardRoutes);
 app.use("/api/surveys", surveyRoutes);
-
-// Health Check
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/semester-comparison", semesterComparisonRoutes);
 app.get("/", (req, res) => {
   return res.status(200).json({
     success: true,
     message: "Course Feedback Survey Tool API is running.",
   });
 });
-
-// Central Error Handler
 app.use((error, req, res, next) => {
   console.error("API Error:", error);
 
@@ -86,18 +79,13 @@ app.use((error, req, res, next) => {
     message: "An unexpected server error occurred.",
   });
 });
-<<<<<<< Updated upstream
-
-// Start Server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
 });
 
-// Start server
-=======
->>>>>>> Stashed changes
+
+
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
 });

@@ -31,18 +31,10 @@ const getSemesterComparison = async ({
             s.semester_name,
             s.academic_year,
 
-            COUNT(DISTINCT ci.course_instructor_id)
-                AS course_offerings,
-
-            COUNT(DISTINCT a.submission_id)
-                AS total_submissions,
-
-            COUNT(fa.answer_id)
-                AS total_ratings,
-
-            SUM(fa.rating_value)
-                AS total_rating_sum,
-
+            COUNT(DISTINCT ci.course_instructor_id) AS course_offerings,
+            COUNT(DISTINCT a.submission_id) AS total_submissions,
+            COUNT(fa.answer_id) AS total_ratings,
+            SUM(fa.rating_value) AS total_rating_sum,
             ROUND(
                 AVG(fa.rating_value)::numeric,
                 2
@@ -76,10 +68,7 @@ const getSemesterComparison = async ({
             s.semester_id;
     `;
 
-    const result = await pool.query(query, [
-        toParam(courseId),
-        toParam(instructorId)
-    ]);
+    const result = await pool.query(query, [toParam(courseId), toParam(instructorId)]);
 
     return result.rows;
 };

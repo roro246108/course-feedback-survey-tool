@@ -1,7 +1,7 @@
 
 const pool = require('../../shared/config/db');
 
-// A response is counted once if it contains at least one meaningful answer.
+
 const ANSWERED_SUBMISSIONS = `
     answered_submissions AS (
         SELECT fs.submission_id, fs.survey_id, fs.submitted_at
@@ -203,10 +203,7 @@ const getCoursePerformance = async ({
             c.course_name
 
         ORDER BY average_rating DESC NULLS LAST, c.course_code ASC
-    `, [
-        toParam(semesterId),
-        toParam(instructorId)
-    ]);
+    `, [toParam(semesterId), toParam(instructorId)]);
 
     return result.rows;
 };
@@ -345,12 +342,9 @@ const countAnsweredSubmissions = async ({
 };
 
 
-// 7. Rating Distribution
-const getRatingDistribution = async ({
-    courseId,
-    semesterId,
-    instructorId
-} = {}) => {
+// 7. Rating Distribution: number of rating answers for each value 1-5
+// (values with no answers are returned with a count of 0)
+const getRatingDistribution = async ({ courseId, semesterId, instructorId } = {}) => {
     const result = await pool.query(`
         SELECT
             r.rating,
@@ -361,16 +355,12 @@ const getRatingDistribution = async ({
         LEFT JOIN (
             SELECT fa.answer_id, fa.rating_value
             FROM feedback_answers fa
-
             INNER JOIN feedback_submissions fs
                 ON fs.submission_id = fa.submission_id
-
             INNER JOIN surveys s
                 ON s.survey_id = fs.survey_id
-
             INNER JOIN course_instructors ci
                 ON ci.course_instructor_id = s.course_instructor_id
-
             WHERE fa.rating_value IS NOT NULL
               AND ($1::int IS NULL OR ci.course_id = $1)
               AND ($2::int IS NULL OR ci.semester_id = $2)
@@ -380,22 +370,15 @@ const getRatingDistribution = async ({
 
         GROUP BY r.rating
         ORDER BY r.rating ASC
-    `, [
-        toParam(courseId),
-        toParam(semesterId),
-        toParam(instructorId)
-    ]);
+    `, [toParam(courseId), toParam(semesterId), toParam(instructorId)]);
 
     return result.rows;
 };
 
 
-// 8. Response Rates
-const getResponseRates = async ({
-    courseId,
-    semesterId,
-    instructorId
-} = {}) => {
+// 8. Response Rates: per non-draft survey, enrolled vs. participated students.
+// Only counts are returned; no student identifiers leave the database.
+const getResponseRates = async ({ courseId, semesterId, instructorId } = {}) => {
     const result = await pool.query(`
         SELECT
             s.survey_id,
@@ -438,11 +421,7 @@ const getResponseRates = async ({
           AND ($3::int IS NULL OR ci.instructor_id = $3)
 
         ORDER BY sem.start_date ASC, c.course_code ASC, s.survey_id ASC
-    `, [
-        toParam(courseId),
-        toParam(semesterId),
-        toParam(instructorId)
-    ]);
+    `, [toParam(courseId), toParam(semesterId), toParam(instructorId)]);
 
     return result.rows;
 };

@@ -1,5 +1,4 @@
 
-
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -23,7 +22,7 @@ import SurveyDetails from "./pages/student/SurveyDetails";
 import MySubmissions from "./pages/student/MySubmissions";
 import MyCourses from "./pages/student/MyCourses";
 
-// Admin Pages
+// Admin Pages - Dashboard & Survey Management
 import AdminDashboard from "./pages/admin/Dashboard";
 import CreateSurvey from "./pages/admin/CreateSurvey";
 import ManageSurveys from "./pages/admin/ManageSurveys";
@@ -31,14 +30,13 @@ import EditSurvey from "./pages/admin/EditSurvey";
 import ManageQuestions from "./pages/admin/ManageQuestions";
 import StudentManagement from "./pages/admin/StudentManagement";
 
-<<<<<<< Updated upstream
-=======
-// Admin Pages - Analytics & Reporting (Merna)
-import AnalyticsOverview from "./pages/instructor/AnalyticsOverview";
-import SemesterComparison from "./pages/instructor/SemesterComparison";
-import ExportReports from "./pages/instructor/ExportReports";
 
->>>>>>> Stashed changes
+// Admin Pages - Analytics & Reporting (Merna)
+import AnalyticsOverview from "./pages/admin/AnalyticsOverview";
+import SemesterComparison from "./pages/admin/SemesterComparison";
+import ExportReports from "./pages/admin/ExportReports";
+
+
 // Instructor Pages
 import InstructorAnalyticsOverview from "./pages/instructor/AnalyticsOverview";
 
@@ -188,38 +186,7 @@ function App() {
               }
             />
 
-<<<<<<< Updated upstream
-            {/* Create Survey */}
-=======
-            <Route
-              path="/admin/courses"
-              element={
-                <AdminLayout>
-                  <AdminModuleNotice moduleName="Courses" />
-                </AdminLayout>
-              }
-            />
-
-            <Route
-              path="/admin/instructors"
-              element={
-                <AdminLayout>
-                  <AdminModuleNotice moduleName="Instructors" />
-                </AdminLayout>
-              }
-            />
-
-            <Route
-              path="/admin/users"
-              element={
-                <AdminLayout>
-                  <StudentManagement />
-                </AdminLayout>
-              }
-            />
-
-            {/* Survey Management */}
->>>>>>> Stashed changes
+   
             <Route
               path="/admin/surveys/create"
               element={
@@ -229,7 +196,6 @@ function App() {
               }
             />
 
-            {/* Manage Surveys */}
             <Route
               path="/admin/surveys"
               element={
@@ -239,7 +205,6 @@ function App() {
               }
             />
 
-            {/* Manage Questions */}
             <Route
               path="/admin/questions"
               element={
@@ -258,12 +223,39 @@ function App() {
               }
             />
 
-            {/* Edit Survey */}
             <Route
               path="/admin/surveys/:id/edit"
               element={
                 <AdminLayout>
                   <EditSurvey />
+                </AdminLayout>
+              }
+            />
+
+            {/* Analytics & Reporting - Merna */}
+            <Route
+              path="/admin/reports"
+              element={
+                <AdminLayout>
+                  <AnalyticsOverview />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/reports/semesters"
+              element={
+                <AdminLayout>
+                  <SemesterComparison />
+                </AdminLayout>
+              }
+            />
+
+            <Route
+              path="/admin/reports/export"
+              element={
+                <AdminLayout>
+                  <ExportReports />
                 </AdminLayout>
               }
             />
@@ -276,11 +268,6 @@ function App() {
         </Routes>
       </BrowserRouter>
     </AuthProvider>
-  );
-}
-
-export default App;
-
   );
 }
 

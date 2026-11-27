@@ -52,16 +52,10 @@ const readQuery = async (query, allowed) => {
         const entity = ENTITY_FILTERS[name];
 
         if (entity && filters[name] !== null) {
-            const exists = await analyticsService.entityExists(
-                entity,
-                filters[name]
-            );
+            const exists = await analyticsService.entityExists(entity, filters[name]);
 
             if (!exists) {
-                throw new RequestError(
-                    404,
-                    `No ${entity} found with ${name} ${filters[name]}.`
-                );
+                throw new RequestError(404, `No ${entity} found with ${name} ${filters[name]}.`);
             }
         }
     }
