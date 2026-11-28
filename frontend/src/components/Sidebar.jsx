@@ -2,8 +2,11 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard,
+<<<<<<< Updated upstream
   ClipboardList,
   BookOpen,
+=======
+>>>>>>> Stashed changes
   GraduationCap,
   BarChart3,
   Users,
@@ -26,16 +29,6 @@ const navigation = [
       { name: 'Manage Surveys', path: '/admin/surveys' },
       { name: 'Manage Questions', path: '/admin/questions' }
     ]
-  },
-  {
-    name: 'Courses',
-    path: '/admin/courses',
-    icon: BookOpen
-  },
-  {
-    name: 'Instructors',
-    path: '/admin/instructors',
-    icon: GraduationCap
   },
   {
     name: 'Reports',
@@ -65,9 +58,14 @@ function Sidebar() {
         </div>
       </div>
 
+<<<<<<< Updated upstream
       {/* Navigation */}
       <nav className="flex-1 space-y-2">
         {navigation.map((item) => {
+=======
+      <nav className="flex-1 space-y-2">
+        {items.map((item) => {
+>>>>>>> Stashed changes
           const Icon = item.icon
 
           return (

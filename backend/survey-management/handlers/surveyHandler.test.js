@@ -1209,3 +1209,43 @@ test('rejects reorder input that omits a question in the survey', async () => {
     assert.equal(database.queries.some(({ sql }) => sql.includes('UPDATE questions') && sql.includes('display_order = display_order + $2')), false);
     assert.equal(database.queries.some(({ sql }) => sql === 'ROLLBACK'), true);
 });
+
+test('lists surveys with eligible students, submitted responses, and response rates', async () => {
+    let capturedQuery = '';
+    pool.query = async (query) => {
+        capturedQuery = query;
+        return {
+            rows: [
+                { survey_id: 1, eligible_students: '25', responses: '8' },
+                { survey_id: 2, eligible_students: '25', responses: '0' },
+                { survey_id: 3, eligible_students: '3', responses: '1' },
+                { survey_id: 4, eligible_students: '0', responses: '0' }
+            ],
+            rowCount: 4
+        };
+    };
+
+    const surveys = await surveyModel.getAllSurveys();
+
+    assert.equal(surveys[0].eligible_students, 25);
+    assert.equal(surveys[0].responses, 8);
+    assert.equal(surveys[0].response_rate, 32);
+    assert.equal(surveys[1].response_rate, 0);
+    assert.equal(surveys[2].response_rate, 33.3);
+    assert.equal(surveys[3].response_rate, null);
+
+    assert.match(
+        capturedQuery,
+        /JOIN users AS student[\s\S]*student\.role = 'Student'/
+    );
+    assert.match(
+        capturedQuery,
+        /FROM participation AS p[\s\S]*p\.survey_id = s\.survey_id[\s\S]*p\.status = 'Submitted'/
+    );
+    assert.match(capturedQuery, /COUNT\(DISTINCT e\.student_id\)/);
+    assert.match(capturedQuery, /COUNT\(DISTINCT p\.student_id\)/);
+    assert.doesNotMatch(
+        capturedQuery,
+        /JOIN semesters AS sem\s+ON ci\.semester_id = ci\.semester_id/i
+    );
+});

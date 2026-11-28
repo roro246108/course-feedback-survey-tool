@@ -4,7 +4,19 @@ const getDashboardStats = async () => {
     const result = await pool.query(`
         SELECT
             (SELECT COUNT(*) FROM surveys) AS total_surveys,
+<<<<<<< Updated upstream
             (SELECT COUNT(*) FROM surveys WHERE status = 'Published') AS published_surveys,
+=======
+            (
+                SELECT COUNT(*)
+                FROM surveys
+                WHERE status = 'Published'
+                  AND opening_date::date <=
+                      (CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Cairo')::date
+                  AND (CURRENT_TIMESTAMP AT TIME ZONE 'Africa/Cairo') <
+                      (closing_date::date + 1)::timestamp
+            ) AS active_surveys,
+>>>>>>> Stashed changes
             (SELECT COUNT(*) FROM feedback_submissions) AS total_responses,
             (SELECT COUNT(*) FROM courses) AS total_courses
     `);

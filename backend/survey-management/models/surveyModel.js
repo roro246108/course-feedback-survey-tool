@@ -193,7 +193,24 @@ const getAllSurveys = async () => {
             sem.academic_year,
 
             u.user_id AS instructor_id,
-            u.full_name AS instructor_name
+            u.full_name AS instructor_name,
+
+            (
+                SELECT COUNT(DISTINCT e.student_id)
+                FROM enrollments AS e
+                JOIN users AS student
+                    ON student.user_id = e.student_id
+                   AND student.role = 'Student'
+                WHERE e.course_id = ci.course_id
+                  AND e.semester_id = ci.semester_id
+            )::INTEGER AS eligible_students,
+
+            (
+                SELECT COUNT(DISTINCT p.student_id)
+                FROM participation AS p
+                WHERE p.survey_id = s.survey_id
+                  AND p.status = 'Submitted'
+            )::INTEGER AS responses
 
         FROM surveys AS s
 
@@ -212,7 +229,19 @@ const getAllSurveys = async () => {
         ORDER BY s.created_at DESC;
     `);
 
-    return result.rows;
+    return result.rows.map((survey) => {
+        const eligibleStudents = Number(survey.eligible_students) || 0;
+        const responses = Number(survey.responses) || 0;
+
+        return {
+            ...survey,
+            eligible_students: eligibleStudents,
+            responses,
+            response_rate: eligibleStudents > 0
+                ? Math.round((responses / eligibleStudents) * 1000) / 10
+                : null
+        };
+    });
 };
 
 
@@ -1142,12 +1171,31 @@ const getInstructorsByCourseAndSemester = async (
 
 
 // ============================================
+// GET SURVEY STATUS (lifecycle event detection)
+// ============================================
+
+const getSurveyStatus = async (surveyId) => {
+    const result = await pool.query(
+        `
+            SELECT status
+            FROM surveys
+            WHERE survey_id = $1;
+        `,
+        [surveyId]
+    );
+
+    return result.rows[0] ? result.rows[0].status : null;
+};
+
+
+// ============================================
 // EXPORTS
 // ============================================
 
 module.exports = {
     getAllSurveys,
     getSurveyById,
+    getSurveyStatus,
     createSurvey,
     updateSurvey,
     deleteSurvey,

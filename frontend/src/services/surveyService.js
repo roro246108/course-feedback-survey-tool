@@ -1,7 +1,18 @@
 
+<<<<<<< Updated upstream
 const API_BASE_URL = (
   import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api'
 ).replace(/\/$/, '');
+=======
+import { resolveSurveyManagementApiBase } from '../config/surveyManagementApi';
+
+// Uses API Gateway (SurveyManagementLambda) when
+// VITE_SURVEY_MANAGEMENT_API_URL is set; otherwise the existing Express URL.
+const API_BASE_URL = resolveSurveyManagementApiBase(
+  import.meta.env.VITE_API_BASE_URL ||
+  `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api`
+);
+>>>>>>> Stashed changes
 
 const SURVEYS_URL = `${API_BASE_URL}/surveys`;
 
@@ -39,9 +50,15 @@ const request = async (path, options = {}) => {
   return result.data;
 };
 
+<<<<<<< Updated upstream
 // GET all surveys
 export const getSurveys = (options = {}) =>
   request('/', options);
+=======
+// GET all surveys (no trailing slash: matches the API Gateway route exactly)
+export const getSurveys = (options = {}, apiFetch) =>
+  request('', options, apiFetch);
+>>>>>>> Stashed changes
 
 // GET survey by ID
 export const getSurveyById = (surveyId, options = {}) => {

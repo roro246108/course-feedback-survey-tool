@@ -4,14 +4,31 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+<<<<<<< Updated upstream
     "test": "node --test survey-management/handlers/surveyHandler.test.js"
+=======
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test survey-management/handlers/surveyHandler.test.js",
+    "test:survey": "node --test survey-management/handlers/surveyHandler.test.js tests/surveyManagementLambda.test.js tests/surveyLifecycleEvents.test.js tests/surveyEligibility.test.js tests/surveyLambdaRuntime.test.js tests/surveyReminderLambda.test.js tests/surveyReminderDateUtils.test.js tests/surveyReminderModel.test.js tests/surveyReminderService.test.js tests/surveyReminderTemplate.test.js tests/brevoEmailService.test.js tests/brevoIntegrationScript.test.js",
+    "test:survey:neon": "node scripts/runSurveyNeonIntegrationTests.js"
+>>>>>>> Stashed changes
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+<<<<<<< Updated upstream
     "cors": "^2.8.6",
+=======
+    "@aws-sdk/client-eventbridge": "^3.1179.0",
+    "@aws-sdk/client-lambda": "^3.1178.0",
+    "@aws-sdk/client-secrets-manager": "^3.1179.0",
+    "argon2": "^0.45.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+>>>>>>> Stashed changes
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "pg": "^8.23.1"

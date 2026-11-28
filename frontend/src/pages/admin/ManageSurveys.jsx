@@ -33,6 +33,7 @@ import {
   changeSurveyStatus,
   deleteSurvey
 } from '../../services/surveyService';
+import { getCairoCalendarDayDifference } from '../../utils/surveyDateUtils';
 
 
 const PAGE_SIZE = 5;
@@ -68,9 +69,7 @@ const getDisplayStatus = (survey) => {
   if (
     status === 'published' &&
     survey.closing_date &&
-    new Date(
-      `${String(survey.closing_date).slice(0, 10)}T23:59:59`
-    ) < new Date()
+    getCairoCalendarDayDifference(survey.closing_date) < 0
   ) {
     return 'Closed';
   }
@@ -1245,22 +1244,30 @@ function ManageSurveys() {
 
                     {/* Eligible Students */}
 
-                    <td className="px-3 py-3.5 text-center text-sm text-gray-400">
-                      —
+                    <td className="px-3 py-3.5 text-center text-sm font-medium text-[#263D32]">
+                      {Number.isFinite(Number(survey.eligible_students))
+                        ? Number(survey.eligible_students)
+                        : 0}
                     </td>
 
 
                     {/* Responses */}
 
-                    <td className="px-3 py-3.5 text-center text-sm text-gray-400">
-                      —
+                    <td className="px-3 py-3.5 text-center text-sm font-medium text-[#263D32]">
+                      {Number.isFinite(Number(survey.responses))
+                        ? Number(survey.responses)
+                        : 0}
                     </td>
 
 
                     {/* Response Rate */}
 
-                    <td className="px-3 py-3.5 text-center text-sm text-gray-400">
-                      —
+                    <td className="px-3 py-3.5 text-center text-sm font-medium text-[#263D32]">
+                      {survey.response_rate === null
+                        ? 'No eligible students'
+                        : Number.isFinite(Number(survey.response_rate))
+                          ? `${Number(survey.response_rate)}%`
+                          : '—'}
                     </td>
 
 

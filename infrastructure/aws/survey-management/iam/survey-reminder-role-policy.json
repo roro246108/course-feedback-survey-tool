@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WriteOwnLogs",
+      "Effect": "Allow",
+      "Action": ["logs:CreateLogStream", "logs:PutLogEvents"],
+      "Resource": "arn:aws:logs:${Region}:${AccountId}:log-group:/aws/lambda/SurveyReminderLambda:*"
+    },
+    {
+      "Sid": "ReadOwnSecretOnly",
+      "Effect": "Allow",
+      "Action": "secretsmanager:GetSecretValue",
+      "Resource": "${SurveyReminderSecretArn}"
+    }
+  ]
+}

@@ -1,0 +1,569 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >-
+  Survey Management module of the Course Feedback Survey Tool.
+  SurveyManagementLambda, SurveyReminderLambda, their API Gateway routes,
+  the reminder schedule, SurveyPublished/SurveyClosed publishing permissions,
+  IAM roles, CloudWatch log groups and secret references.
+  CONFIGURATION ONLY - this template has not been deployed. It defines no
+  resources for AnonymousFeedbackLambda or AnalyticsReportingLambda.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  FrontendOrigin:
+    Type: String
+    Description: >-
+      Exact origin of the React website (no trailing slash), for example the
+      course-feedback-web S3 website or CloudFront URL. Used for CORS and for
+      survey links in reminder emails.
+    AllowedPattern: "^https?://[^/\\s]+$"
+
+  CreateHttpApi:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: >-
+      "true" creates course-feedback-http-api. Set "false" and provide
+      ExistingHttpApiId when the shared API is owned by another stack; only
+      the Survey Management routes and integration are then added to it.
+
+  ExistingHttpApiId:
+    Type: String
+    Default: ""
+    Description: ID of an existing course-feedback-http-api (when CreateHttpApi=false).
+
+  CreateEventBus:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "false"
+    Description: >-
+      "true" creates the course-feedback-events bus. Keep "false" when the
+      shared bus is managed elsewhere.
+
+  EventBusName:
+    Type: String
+    Default: course-feedback-events
+
+  SurveyManagementSecretArn:
+    Type: String
+    Description: >-
+      ARN of the Secrets Manager secret for SurveyManagementLambda. JSON keys:
+      DATABASE_URL (Neon, pooled endpoint recommended), ACCESS_TOKEN_SECRET.
+
+  SurveyReminderSecretArn:
+    Type: String
+    Description: >-
+      ARN of the Secrets Manager secret for SurveyReminderLambda. JSON keys:
+      DATABASE_URL, BREVO_API_KEY.
+
+  BrevoSenderEmail:
+    Type: String
+    Description: Verified Brevo sender address (not secret).
+
+  BrevoSenderName:
+    Type: String
+    Default: Course Feedback
+
+  ReminderDryRun:
+    Type: String
+    AllowedValues: ["true", "false"]
+    Default: "true"
+    Description: >-
+      "true" evaluates reminder candidates without sending email. Change to
+      "false" only after the Brevo ledger has been verified in staging.
+
+  ReminderScheduleState:
+    Type: String
+    AllowedValues: [ENABLED, DISABLED]
+    Default: DISABLED
+
+  SurveyManagementReservedConcurrency:
+    Type: Number
+    Default: 10
+    Description: >-
+      Caps concurrent executions (each holds at most PG_POOL_MAX Neon
+      connections).
+
+  LogRetentionInDays:
+    Type: Number
+    Default: 30
+
+  ApiThrottlingBurstLimit:
+    Type: Number
+    Default: 50
+
+  ApiThrottlingRateLimit:
+    Type: Number
+    Default: 25
+
+Conditions:
+  ShouldCreateHttpApi: !Equals [!Ref CreateHttpApi, "true"]
+  ShouldCreateEventBus: !Equals [!Ref CreateEventBus, "true"]
+
+Globals:
+  Function:
+    Runtime: nodejs22.x
+    Architectures: [arm64]
+    CodeUri: ../../../backend
+    Tracing: PassThrough
+    Environment:
+      Variables:
+        NODE_OPTIONS: --enable-source-maps
+        PG_POOL_MAX: "2"
+        PG_CONNECTION_TIMEOUT_MS: "5000"
+        PG_IDLE_TIMEOUT_MS: "10000"
+        PG_STATEMENT_TIMEOUT_MS: "10000"
+
+Resources:
+  # -------------------------------------------------------------------------
+  # CloudWatch Logs (one log group per Lambda, as in the architecture)
+  # -------------------------------------------------------------------------
+  SurveyManagementLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/SurveyManagementLambda
+      RetentionInDays: !Ref LogRetentionInDays
+
+  SurveyReminderLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /aws/lambda/SurveyReminderLambda
+      RetentionInDays: !Ref LogRetentionInDays
+
+  SurveyApiAccessLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: ShouldCreateHttpApi
+    Properties:
+      LogGroupName: /aws/apigateway/course-feedback-http-api
+      RetentionInDays: !Ref LogRetentionInDays
+
+  # -------------------------------------------------------------------------
+  # EventBridge bus (optional; normally shared)
+  # -------------------------------------------------------------------------
+  CourseFeedbackEventBus:
+    Type: AWS::Events::EventBus
+    Condition: ShouldCreateEventBus
+    Properties:
+      Name: !Ref EventBusName
+
+  # -------------------------------------------------------------------------
+  # IAM - least privilege, Survey Management roles only
+  # -------------------------------------------------------------------------
+  SurveyManagementRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: survey-mgmt-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: survey-mgmt-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub "${SurveyManagementLogGroup.Arn}:*"
+        - PolicyName: survey-mgmt-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref SurveyManagementSecretArn
+        - PolicyName: survey-mgmt-put-lifecycle-events
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: events:PutEvents
+                Resource: !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:event-bus/${EventBusName}"
+                Condition:
+                  StringEquals:
+                    events:source: course-feedback.survey-management
+                    events:detail-type: [SurveyPublished, SurveyClosed]
+
+  SurveyReminderRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: survey-reminder-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: lambda.amazonaws.com }
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: survey-reminder-logs
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [logs:CreateLogStream, logs:PutLogEvents]
+                Resource: !Sub "${SurveyReminderLogGroup.Arn}:*"
+        - PolicyName: survey-reminder-secret
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref SurveyReminderSecretArn
+
+  SurveyReminderSchedulerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: survey-reminder-scheduler-role
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: { Service: scheduler.amazonaws.com }
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                aws:SourceAccount: !Ref AWS::AccountId
+      Policies:
+        - PolicyName: invoke-survey-reminder-lambda
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: lambda:InvokeFunction
+                Resource: !GetAtt SurveyReminderFunction.Arn
+
+  # -------------------------------------------------------------------------
+  # Lambdas
+  # -------------------------------------------------------------------------
+  SurveyManagementFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: SurveyManagementLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: cjs
+        Target: node22
+        Sourcemap: true
+        EntryPoints:
+          - survey-management/lambda/surveyManagementLambda.js
+        External:
+          - pg-native
+    Properties:
+      FunctionName: SurveyManagementLambda
+      Description: Survey CRUD, questions, lifecycle, eligibility and Survey Management dashboard.
+      Handler: surveyManagementLambda.handler
+      Role: !GetAtt SurveyManagementRole.Arn
+      MemorySize: 512
+      Timeout: 15
+      ReservedConcurrentExecutions: !Ref SurveyManagementReservedConcurrency
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref SurveyManagementLogGroup
+      Environment:
+        Variables:
+          SECRETS_ARN: !Ref SurveyManagementSecretArn
+          EVENT_BUS_NAME: !Ref EventBusName
+          SURVEY_EVENTS_ENABLED: "true"
+          PG_SSL_REJECT_UNAUTHORIZED: "true"
+
+  SurveyReminderFunction:
+    Type: AWS::Serverless::Function
+    DependsOn: SurveyReminderLogGroup
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Format: cjs
+        Target: node22
+        Sourcemap: true
+        EntryPoints:
+          - survey-reminders/lambdaHandler.js
+        External:
+          - pg-native
+    Properties:
+      FunctionName: SurveyReminderLambda
+      Description: Daily 10:00 Africa/Cairo survey closing reminders via Brevo.
+      Handler: lambdaHandler.handler
+      Role: !GetAtt SurveyReminderRole.Arn
+      MemorySize: 256
+      Timeout: 300
+      # One run at a time: concurrent runs could send duplicate reminders.
+      ReservedConcurrentExecutions: 1
+      LoggingConfig:
+        LogFormat: JSON
+        LogGroup: !Ref SurveyReminderLogGroup
+      Environment:
+        Variables:
+          SECRETS_ARN: !Ref SurveyReminderSecretArn
+          FRONTEND_URL: !Ref FrontendOrigin
+          BREVO_SENDER_EMAIL: !Ref BrevoSenderEmail
+          BREVO_SENDER_NAME: !Ref BrevoSenderName
+          REMINDER_DEDUPE_MODE: brevo-ledger
+          REMINDER_LEDGER_LOOKBACK_DAYS: "30"
+          REMINDER_DRY_RUN: !Ref ReminderDryRun
+          PG_SSL_REJECT_UNAUTHORIZED: "true"
+
+  # -------------------------------------------------------------------------
+  # Reminder schedule: 10:00 Africa/Cairo every day
+  # -------------------------------------------------------------------------
+  SurveyReminderSchedule:
+    Type: AWS::Scheduler::Schedule
+    Properties:
+      Name: survey-reminder-daily-1000-cairo
+      Description: Sends survey closing reminders 3 days before the closing date.
+      ScheduleExpression: cron(0 10 * * ? *)
+      ScheduleExpressionTimezone: Africa/Cairo
+      FlexibleTimeWindow:
+        Mode: "OFF"
+      State: !Ref ReminderScheduleState
+      Target:
+        Arn: !GetAtt SurveyReminderFunction.Arn
+        RoleArn: !GetAtt SurveyReminderSchedulerRole.Arn
+        Input: "{}"
+        RetryPolicy:
+          # A retried invocation could repeat sends; the next daily run
+          # performs catch-up while the survey is still open.
+          MaximumRetryAttempts: 0
+          MaximumEventAgeInSeconds: 3600
+
+  # -------------------------------------------------------------------------
+  # API Gateway HTTP API: course-feedback-http-api
+  # -------------------------------------------------------------------------
+  CourseFeedbackHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Condition: ShouldCreateHttpApi
+    Properties:
+      Name: course-feedback-http-api
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !Ref FrontendOrigin
+        AllowMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+        AllowHeaders: [authorization, content-type, x-csrf-token]
+        ExposeHeaders: [x-survey-event-status]
+        AllowCredentials: true
+        MaxAge: 600
+
+  CourseFeedbackHttpApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Condition: ShouldCreateHttpApi
+    Properties:
+      ApiId: !Ref CourseFeedbackHttpApi
+      StageName: $default
+      AutoDeploy: true
+      DefaultRouteSettings:
+        ThrottlingBurstLimit: !Ref ApiThrottlingBurstLimit
+        ThrottlingRateLimit: !Ref ApiThrottlingRateLimit
+      AccessLogSettings:
+        DestinationArn: !GetAtt SurveyApiAccessLogGroup.Arn
+        Format: >-
+          {"requestId":"$context.requestId","routeKey":"$context.routeKey",
+          "status":"$context.status","latency":"$context.responseLatency",
+          "integrationError":"$context.integrationErrorMessage"}
+
+  SurveyManagementIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt SurveyManagementFunction.Arn
+      PayloadFormatVersion: "2.0"
+      TimeoutInMillis: 29000
+
+  # Survey Management routes (mirror backend/survey-management/lambda/routes.js)
+  RouteListSurveys:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteCreateSurvey:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: POST /api/surveys
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteListCourses:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys/courses
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteListInstructors:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys/instructors
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteListSemesters:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys/semesters
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteGetSurvey:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys/{id}
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteUpdateSurvey:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: PUT /api/surveys/{id}
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDeleteSurvey:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: DELETE /api/surveys/{id}
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteChangeSurveyStatus:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: PATCH /api/surveys/{id}/status
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteGetQuestions:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/surveys/{id}/questions
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteAddQuestion:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: POST /api/surveys/{id}/questions
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteReorderQuestions:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: PUT /api/surveys/{id}/questions/reorder
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteUpdateQuestion:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: PUT /api/surveys/{id}/questions/{questionId}
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDeleteQuestion:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: DELETE /api/surveys/{id}/questions/{questionId}
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDashboardStats:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/dashboard/stats
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDashboardResponseTrend:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/dashboard/response-trend
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDashboardSurveyStatus:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/dashboard/survey-status
+      Target: !Sub integrations/${SurveyManagementIntegration}
+  RouteDashboardRecentSurveys:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+      RouteKey: GET /api/dashboard/recent-surveys
+      Target: !Sub integrations/${SurveyManagementIntegration}
+
+  # API Gateway may invoke SurveyManagementLambda only for these paths.
+  SurveyManagementApiInvokeSurveys:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SurveyManagementFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/api/surveys*"
+        - ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+
+  SurveyManagementApiInvokeDashboard:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref SurveyManagementFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - "arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiId}/*/*/api/dashboard/*"
+        - ApiId: !If [ShouldCreateHttpApi, !Ref CourseFeedbackHttpApi, !Ref ExistingHttpApiId]
+
+  # -------------------------------------------------------------------------
+  # Alarms on errors (CloudWatch metrics: Invocations, Errors, Duration)
+  # -------------------------------------------------------------------------
+  SurveyManagementErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: SurveyManagementLambda-errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SurveyManagementFunction
+      Statistic: Sum
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  SurveyReminderErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: SurveyReminderLambda-errors
+      Namespace: AWS/Lambda
+      MetricName: Errors
+      Dimensions:
+        - Name: FunctionName
+          Value: !Ref SurveyReminderFunction
+      Statistic: Sum
+      Period: 86400
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+
+  # Event publish failures are logged with code SURVEY_EVENT_PUBLISH_FAILED.
+  SurveyEventPublishFailedMetric:
+    Type: AWS::Logs::MetricFilter
+    Properties:
+      LogGroupName: !Ref SurveyManagementLogGroup
+      FilterPattern: '"SURVEY_EVENT_PUBLISH_FAILED"'
+      MetricTransformations:
+        - MetricNamespace: CourseFeedback/SurveyManagement
+          MetricName: SurveyEventPublishFailed
+          MetricValue: "1"
+          DefaultValue: 0
+
+Outputs:
+  SurveyManagementFunctionArn:
+    Description: >-
+      Give this ARN to the Anonymous Feedback owner for their
+      lambda:InvokeFunction permission (direct eligibility invoke).
+    Value: !GetAtt SurveyManagementFunction.Arn
+  SurveyReminderFunctionArn:
+    Value: !GetAtt SurveyReminderFunction.Arn
+  HttpApiEndpoint:
+    Condition: ShouldCreateHttpApi
+    Description: Use as VITE_SURVEY_MANAGEMENT_API_URL in the frontend build.
+    Value: !GetAtt CourseFeedbackHttpApi.ApiEndpoint
+  SurveyManagementRoleArn:
+    Value: !GetAtt SurveyManagementRole.Arn
+  SurveyReminderRoleArn:
+    Value: !GetAtt SurveyReminderRole.Arn

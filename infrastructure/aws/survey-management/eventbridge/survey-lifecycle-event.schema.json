@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "course-feedback/survey-management/survey-lifecycle-event/1.0",
+  "title": "Survey lifecycle event detail (SurveyPublished, SurveyClosed)",
+  "description": "EventBridge 'detail' published by SurveyManagementLambda to the course-feedback-events bus with source 'course-feedback.survey-management'. Contains no student data, names, emails, titles or free text.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "eventVersion",
+    "occurredAt",
+    "surveyId",
+    "courseId",
+    "semesterId",
+    "courseInstructorId",
+    "status",
+    "previousStatus",
+    "openingDate",
+    "closingDate",
+    "questionCount"
+  ],
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid", "description": "Unique per event. Use it to de-duplicate." },
+    "eventType": { "enum": ["SurveyPublished", "SurveyClosed"] },
+    "eventVersion": { "const": "1.0" },
+    "occurredAt": { "type": "string", "format": "date-time" },
+    "surveyId": { "type": "integer", "minimum": 1 },
+    "courseId": { "type": ["integer", "null"], "minimum": 1 },
+    "semesterId": { "type": ["integer", "null"], "minimum": 1 },
+    "courseInstructorId": { "type": ["integer", "null"], "minimum": 1 },
+    "status": { "enum": ["Published", "Closed"] },
+    "previousStatus": { "enum": ["Draft", "Published", null] },
+    "openingDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "closingDate": { "type": ["string", "null"], "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "questionCount": { "type": ["integer", "null"], "minimum": 0 }
+  },
+  "examples": [
+    {
+      "eventId": "6f1c2a8e-4b1d-4f9a-9d5e-0c7b3a2e1f00",
+      "eventType": "SurveyPublished",
+      "eventVersion": "1.0",
+      "occurredAt": "2026-11-28T08:00:00.000Z",
+      "surveyId": 42,
+      "courseId": 3,
+      "semesterId": 2,
+      "courseInstructorId": 17,
+      "status": "Published",
+      "previousStatus": "Draft",
+      "openingDate": "2026-12-01",
+      "closingDate": "2026-12-14",
+      "questionCount": 6
+    }
+  ]
+}
